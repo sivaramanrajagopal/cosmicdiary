@@ -66,12 +66,16 @@ ALTER TABLE planetary_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_planetary_correlations ENABLE ROW LEVEL SECURITY;
 
 -- Policies: Allow all operations (can restrict later if needed)
+-- Drop existing policies if they exist, then create them
+DROP POLICY IF EXISTS "Allow all operations on events" ON events;
 CREATE POLICY "Allow all operations on events" ON events
     FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all operations on planetary_data" ON planetary_data;
 CREATE POLICY "Allow all operations on planetary_data" ON planetary_data
     FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all operations on correlations" ON event_planetary_correlations;
 CREATE POLICY "Allow all operations on correlations" ON event_planetary_correlations
     FOR ALL USING (true) WITH CHECK (true);
 
