@@ -109,6 +109,76 @@ CREATE TRIGGER update_correlations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Event House Mappings Table
+-- Stores house mapping for each event (Kalapurushan method)
+CREATE TABLE IF NOT EXISTS event_house_mappings (
+    id BIGSERIAL PRIMARY KEY,
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    house_number INT NOT NULL CHECK (house_number BETWEEN 1 AND 12),
+    rasi_name TEXT NOT NULL,
+    house_significations TEXT[] DEFAULT '{}',
+    mapping_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(event_id)
+);
+
+-- Event Planetary Aspects Table
+-- Stores planetary aspects to event houses (Drishti system)
+CREATE TABLE IF NOT EXISTS event_planetary_aspects (
+    id BIGSERIAL PRIMARY KEY,
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    house_number INT NOT NULL CHECK (house_number BETWEEN 1 AND 12),
+    planet_name TEXT NOT NULL,
+    aspect_type TEXT NOT NULL CHECK (aspect_type IN (
+        'conjunction', 'drishti_3rd', 'drishti_4th', 'drishti_5th', 
+        'drishti_7th', 'drishti_8th', 'drishti_9th', 'drishti_10th', 
+        'drishti_11th', 'dustana'
+    )),
+    planet_longitude REAL NOT NULL,
+    planet_rasi TEXT NOT NULL,
+    aspect_strength TEXT CHECK (aspect_strength IN ('strong', 'moderate', 'weak')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(event_id, house_number, planet_name, aspect_type)
+);
+
+-- Indexes for house mappings
+CREATE INDEX IF NOT EXISTS idx_house_mappings_event ON event_house_mappings(event_id);
+CREATE INDEX IF NOT EXISTS idx_house_mappings_house ON event_house_mappings(house_number);
+CREATE INDEX IF NOT EXISTS idx_house_mappings_rasi ON event_house_mappings(rasi_name);
+
+-- Indexes for planetary aspects
+CREATE INDEX IF NOT EXISTS idx_aspects_event ON event_planetary_aspects(event_id);
+CREATE INDEX IF NOT EXISTS idx_aspects_house ON event_planetary_aspects(house_number);
+CREATE INDEX IF NOT EXISTS idx_aspects_planet ON event_planetary_aspects(planet_name);
+CREATE INDEX IF NOT EXISTS idx_aspects_type ON event_planetary_aspects(aspect_type);
+
+-- RLS for new tables
+ALTER TABLE event_house_mappings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_planetary_aspects ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all operations on house_mappings" ON event_house_mappings;
+CREATE POLICY "Allow all operations on house_mappings" ON event_house_mappings
+    FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all operations on aspects" ON event_planetary_aspects;
+CREATE POLICY "Allow all operations on aspects" ON event_planetary_aspects
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- Triggers for new tables
+DROP TRIGGER IF EXISTS update_house_mappings_updated_at ON event_house_mappings;
+CREATE TRIGGER update_house_mappings_updated_at
+    BEFORE UPDATE ON event_house_mappings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_aspects_updated_at ON event_planetary_aspects;
+CREATE TRIGGER update_aspects_updated_at
+    BEFORE UPDATE ON event_planetary_aspects
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Function to ensure planetary data exists for a date
 CREATE OR REPLACE FUNCTION ensure_planetary_data(target_date DATE)
 RETURNS VOID AS $$

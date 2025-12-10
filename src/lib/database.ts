@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Event, PlanetaryData, EventPlanetaryCorrelation } from './types';
+import { Event, PlanetaryData, EventPlanetaryCorrelation, EventHouseMapping, EventPlanetaryAspect } from './types';
 
 export async function getEvents(date?: string): Promise<Event[]> {
   try {
@@ -250,6 +250,150 @@ export async function createCorrelation(
   } catch (error) {
     console.error('Error creating correlation:', error);
     return null;
+  }
+}
+
+// House Mapping Functions
+export async function createHouseMapping(
+  mapping: Omit<EventHouseMapping, 'id' | 'created_at' | 'updated_at'>
+): Promise<EventHouseMapping | null> {
+  try {
+    const { data, error } = await supabase
+      .from('event_house_mappings')
+      .upsert([{
+        event_id: mapping.event_id,
+        house_number: mapping.house_number,
+        rasi_name: mapping.rasi_name,
+        house_significations: mapping.house_significations,
+        mapping_reason: mapping.mapping_reason,
+      }], {
+        onConflict: 'event_id',
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating house mapping:', error);
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      event_id: data.event_id,
+      house_number: data.house_number,
+      rasi_name: data.rasi_name,
+      house_significations: data.house_significations || [],
+      mapping_reason: data.mapping_reason,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('Error creating house mapping:', error);
+    return null;
+  }
+}
+
+export async function getHouseMapping(eventId: number): Promise<EventHouseMapping | null> {
+  try {
+    const { data, error } = await supabase
+      .from('event_house_mappings')
+      .select('*')
+      .eq('event_id', eventId)
+      .maybeSingle();
+    
+    if (error || !data) {
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      event_id: data.event_id,
+      house_number: data.house_number,
+      rasi_name: data.rasi_name,
+      house_significations: data.house_significations || [],
+      mapping_reason: data.mapping_reason,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('Error fetching house mapping:', error);
+    return null;
+  }
+}
+
+// Planetary Aspect Functions
+export async function createPlanetaryAspect(
+  aspect: Omit<EventPlanetaryAspect, 'id' | 'created_at' | 'updated_at'>
+): Promise<EventPlanetaryAspect | null> {
+  try {
+    const { data, error } = await supabase
+      .from('event_planetary_aspects')
+      .insert([{
+        event_id: aspect.event_id,
+        house_number: aspect.house_number,
+        planet_name: aspect.planet_name,
+        aspect_type: aspect.aspect_type,
+        planet_longitude: aspect.planet_longitude,
+        planet_rasi: aspect.planet_rasi,
+        aspect_strength: aspect.aspect_strength,
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      // Ignore duplicate key errors (UNIQUE constraint)
+      if (error.code === '23505') {
+        return null;
+      }
+      console.error('Error creating planetary aspect:', error);
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      event_id: data.event_id,
+      house_number: data.house_number,
+      planet_name: data.planet_name,
+      aspect_type: data.aspect_type,
+      planet_longitude: data.planet_longitude,
+      planet_rasi: data.planet_rasi,
+      aspect_strength: data.aspect_strength,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('Error creating planetary aspect:', error);
+    return null;
+  }
+}
+
+export async function getPlanetaryAspects(eventId: number): Promise<EventPlanetaryAspect[]> {
+  try {
+    const { data, error } = await supabase
+      .from('event_planetary_aspects')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('aspect_strength', { ascending: false });
+    
+    if (error || !data) {
+      return [];
+    }
+    
+    return data.map((asp: any) => ({
+      id: asp.id,
+      event_id: asp.event_id,
+      house_number: asp.house_number,
+      planet_name: asp.planet_name,
+      aspect_type: asp.aspect_type,
+      planet_longitude: asp.planet_longitude,
+      planet_rasi: asp.planet_rasi,
+      aspect_strength: asp.aspect_strength,
+      created_at: asp.created_at,
+      updated_at: asp.updated_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching planetary aspects:', error);
+    return [];
   }
 }
 

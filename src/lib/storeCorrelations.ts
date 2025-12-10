@@ -1,6 +1,7 @@
 import { Event, PlanetaryData, EventPlanetaryCorrelation } from './types';
-import { getPlanetaryData, createCorrelation } from './database';
+import { getPlanetaryData, createCorrelation, createHouseMapping, createPlanetaryAspect } from './database';
 import { analyzeEventPlanetaryCorrelation } from './astrologyAnalysis';
+import { mapEventToHouse, calculatePlanetaryAspects } from './houseMapping';
 
 /**
  * Calculate and store planetary correlations for an event in the database
@@ -84,7 +85,21 @@ export async function calculateAndStoreCorrelations(event: Event): Promise<Event
     }
   }
   
-  console.log(`✅ Stored ${correlations.length} correlations for event ${event.id}`);
+  // Calculate and store house mapping
+  const houseMapping = mapEventToHouse(event);
+  const storedMapping = await createHouseMapping(houseMapping);
+  
+  // Calculate and store planetary aspects
+  const aspects = calculatePlanetaryAspects(event, houseMapping, planetaryData);
+  let aspectCount = 0;
+  for (const aspect of aspects) {
+    const stored = await createPlanetaryAspect(aspect);
+    if (stored) {
+      aspectCount++;
+    }
+  }
+  
+  console.log(`✅ Stored for event ${event.id}: ${correlations.length} correlations, 1 house mapping, ${aspectCount} aspects`);
   return correlations;
 }
 
