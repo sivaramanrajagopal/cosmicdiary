@@ -7,15 +7,28 @@ Runs via cron: 0 6 * * * (6 AM daily)
 import os
 import sys
 from datetime import date, datetime
+from pathlib import Path
 from dotenv import load_dotenv
 import requests
 from supabase import create_client, Client
 
-load_dotenv()
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent.resolve()
+
+# Load .env files from script directory (works even when run from cron)
+# Try .env.local first (takes precedence), then .env
+env_local_path = SCRIPT_DIR / '.env.local'
+env_path = SCRIPT_DIR / '.env'
+
+if env_local_path.exists():
+    load_dotenv(dotenv_path=env_local_path, override=True)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=False)  # Don't override if .env.local already loaded
 
 # Supabase configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL', '')
-SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')  # Use service role key
+# Support both SUPABASE_SERVICE_ROLE_KEY and SUPABASE_KEY for compatibility
+SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_KEY', '')
 
 # Flask API URL (if running separately)
 FLASK_API_URL = os.getenv('FLASK_API_URL', 'http://localhost:8000')
