@@ -26,14 +26,15 @@ export default function RootLayout({
             </h1>
             <p className="text-slate-300">Planetary Events Analysis</p>
           </header>
-          <nav className="mb-8 border-b border-purple-800 pb-4">
-            <div className="flex gap-4">
-              <a href="/" className="hover:text-purple-400 transition-colors">Home</a>
-              <a href="/events" className="hover:text-purple-400 transition-colors">Events</a>
-              <a href="/planets" className="hover:text-purple-400 transition-colors">Planets</a>
-              <a href="/analysis" className="hover:text-purple-400 transition-colors">Analysis</a>
-            </div>
-          </nav>
+              <nav className="mb-8 border-b border-purple-800 pb-4">
+                <div className="flex gap-4">
+                  <a href="/" className="hover:text-purple-400 transition-colors">Home</a>
+                  <a href="/events" className="hover:text-purple-400 transition-colors">Events</a>
+                  <a href="/planets" className="hover:text-purple-400 transition-colors">Planets</a>
+                  <a href="/analysis" className="hover:text-purple-400 transition-colors">Analysis</a>
+                  <a href="/house-analysis" className="hover:text-purple-400 transition-colors">Houses & Aspects</a>
+                </div>
+              </nav>
           <main>{children}</main>
         </div>
       </body>

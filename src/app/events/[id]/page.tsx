@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getEventById, getPlanetaryDataForEvent } from '@/lib/database';
+import { getEventById, getPlanetaryDataForEvent, getHouseMapping, getPlanetaryAspects } from '@/lib/database';
 import { format } from 'date-fns';
 import TransitTable from '@/components/TransitTable';
 import { Event } from '@/lib/types';
@@ -38,6 +38,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   if (!event) {
     notFound();
   }
+
+  // Get house mapping and aspects
+  const houseMapping = await getHouseMapping(eventId);
+  const aspects = await getPlanetaryAspects(eventId);
 
   return (
     <div className="space-y-6">
@@ -113,6 +117,95 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <PlanetaryDataSection event={event} />
+
+      {/* House Mapping Section */}
+      {houseMapping && (
+        <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+          <h3 className="text-2xl font-semibold mb-4">🏠 House Mapping</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-sm font-medium text-slate-400 mb-2">House Information</h4>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-slate-400">House Number: </span>
+                  <span className="text-2xl font-bold text-purple-400">{houseMapping.house_number}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Rasi: </span>
+                  <span className="text-lg font-semibold text-blue-400">{houseMapping.rasi_name}</span>
+                </div>
+              </div>
+            </div>
+            {houseMapping.house_significations && houseMapping.house_significations.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-slate-400 mb-2">Significations</h4>
+                <div className="flex flex-wrap gap-2">
+                  {houseMapping.house_significations.map((sig, idx) => (
+                    <span key={idx} className="bg-purple-900/50 px-2 py-1 rounded text-xs">
+                      {sig}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {houseMapping.mapping_reason && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <p className="text-sm text-slate-400 italic">{houseMapping.mapping_reason}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Planetary Aspects Section */}
+      {aspects.length > 0 && (
+        <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+          <h3 className="text-2xl font-semibold mb-4">⭐ Planetary Aspects to Event House</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left py-2 px-4 font-semibold">Planet</th>
+                  <th className="text-left py-2 px-4 font-semibold">Aspect Type</th>
+                  <th className="text-left py-2 px-4 font-semibold">Planet Position</th>
+                  <th className="text-left py-2 px-4 font-semibold">Strength</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aspects.map((aspect) => (
+                  <tr key={aspect.id} className="border-b border-slate-700/50">
+                    <td className="py-2 px-4">
+                      <span className="font-medium text-purple-300">{aspect.planet_name}</span>
+                    </td>
+                    <td className="py-2 px-4">
+                      <span className="text-blue-300">
+                        {aspect.aspect_type === 'conjunction' ? 'Conjunction' :
+                         aspect.aspect_type === 'dustana' ? 'Dustana (6,8,12)' :
+                         aspect.aspect_type.replace('drishti_', 'Drishti ').replace('_', 'th ')}
+                      </span>
+                    </td>
+                    <td className="py-2 px-4">
+                      <div className="text-slate-300">
+                        <div>{aspect.planet_rasi}</div>
+                        <div className="text-xs text-slate-500">{aspect.planet_longitude.toFixed(2)}°</div>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        aspect.aspect_strength === 'strong' ? 'bg-red-900/50 text-red-200' :
+                        aspect.aspect_strength === 'moderate' ? 'bg-yellow-900/50 text-yellow-200' :
+                        'bg-green-900/50 text-green-200'
+                      }`}>
+                        {aspect.aspect_strength.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
