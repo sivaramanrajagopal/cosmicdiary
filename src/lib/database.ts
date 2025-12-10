@@ -139,6 +139,12 @@ export async function createPlanetaryData(planetaryData: PlanetaryData): Promise
 
 export async function getEventCorrelations(eventId: number): Promise<EventPlanetaryCorrelation[]> {
   try {
+    // Validate eventId
+    if (!eventId || typeof eventId !== 'number' || isNaN(eventId)) {
+      console.warn(`Invalid eventId for getEventCorrelations: ${eventId}`);
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('event_planetary_correlations')
       .select('*')
@@ -146,25 +152,64 @@ export async function getEventCorrelations(eventId: number): Promise<EventPlanet
       .order('correlation_score', { ascending: false });
     
     if (error) {
-      console.error('Error fetching correlations:', error);
+      // Enhanced error logging
+      console.error('Error fetching correlations:', {
+        error,
+        eventId,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint,
+      });
+      // Return empty array instead of throwing - this is expected if table doesn't exist or has no data
       return [];
     }
     
-    return (data || []).map((corr: any) => ({
-      id: corr.id,
-      event_id: corr.event_id,
-      date: corr.date,
-      planet_name: corr.planet_name,
-      planet_position: corr.planet_position ? 
-        (typeof corr.planet_position === 'string' ? JSON.parse(corr.planet_position) : corr.planet_position)
-        : undefined,
-      correlation_score: corr.correlation_score,
-      reason: corr.reason,
-      created_at: corr.created_at,
-      updated_at: corr.updated_at,
-    }));
+    // Handle case where data might be null
+    if (!data) {
+      return [];
+    }
+    
+    return data.map((corr: any) => {
+      try {
+        return {
+          id: corr.id,
+          event_id: corr.event_id,
+          date: corr.date,
+          planet_name: corr.planet_name,
+          planet_position: corr.planet_position ? 
+            (typeof corr.planet_position === 'string' ? JSON.parse(corr.planet_position) : corr.planet_position)
+            : undefined,
+          correlation_score: corr.correlation_score,
+          reason: corr.reason,
+          created_at: corr.created_at,
+          updated_at: corr.updated_at,
+        };
+      } catch (parseError) {
+        console.warn('Error parsing correlation data:', parseError, corr);
+        // Return a basic version if parsing fails
+        return {
+          id: corr.id,
+          event_id: corr.event_id,
+          date: corr.date,
+          planet_name: corr.planet_name,
+          planet_position: undefined,
+          correlation_score: corr.correlation_score || 0,
+          reason: corr.reason,
+          created_at: corr.created_at,
+          updated_at: corr.updated_at,
+        };
+      }
+    });
   } catch (error) {
-    console.error('Error fetching correlations:', error);
+    // Catch any unexpected errors
+    console.error('Unexpected error fetching correlations:', {
+      error,
+      eventId,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return [];
   }
 }

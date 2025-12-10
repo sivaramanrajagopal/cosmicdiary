@@ -29,9 +29,17 @@ export default async function AnalysisPage() {
   // Check which events have stored correlations in database
   const eventsWithStoredCorrelations = await Promise.all(
     events.map(async (event) => {
-      if (!event.id) return { event, hasStored: false };
-      const stored = await getEventCorrelations(event.id);
-      return { event, hasStored: stored.length > 0, correlationCount: stored.length };
+      try {
+        if (!event.id || typeof event.id !== 'number') {
+          return { event, hasStored: false, correlationCount: 0 };
+        }
+        const stored = await getEventCorrelations(event.id);
+        return { event, hasStored: stored.length > 0, correlationCount: stored.length };
+      } catch (error) {
+        // Silently handle errors - correlations might not exist for all events
+        console.warn(`Error checking correlations for event ${event.id}:`, error);
+        return { event, hasStored: false, correlationCount: 0 };
+      }
     })
   );
   
