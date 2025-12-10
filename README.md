@@ -4,10 +4,13 @@ A full-stack astrological research application that correlates world events with
 
 ## 🎯 Features
 
-- **Event Recording**: Manual and automated event collection
-- **Planetary Calculations**: Accurate sidereal calculations using Swiss Ephemeris
-- **Data Correlation**: Link events with planetary positions for research
-- **Email Reports**: Daily summaries and weekly analysis
+- **Event Recording**: Manual and automated event collection with categories and impact levels
+- **Planetary Calculations**: Accurate sidereal calculations using Swiss Ephemeris (Lahiri Ayanamsa)
+- **House Mapping**: Automatic mapping of events to astrological houses (Kalapurushan method)
+- **Planetary Aspects**: Calculation of planetary aspects (Drishti) to event houses
+- **Data Correlation**: Link events with planetary positions, houses, and aspects for research
+- **Analysis Dashboard**: Comprehensive astrological analysis with patterns and insights
+- **Email Reports**: Daily summaries and weekly analysis (optional)
 - **Modern UI**: Next.js 15 with TypeScript and Tailwind CSS
 
 ## 🏗️ Architecture
@@ -123,9 +126,20 @@ python test_full_setup.py
 
 ## 📚 Documentation
 
-- See `ENHANCED_CODE_REVIEW_PROMPT.md` for architecture details
-- Database schema: `database_schema.sql`
-- Environment setup: `.env.example`
+**📖 Complete Documentation Available:**
+
+- **[COMPLETE_SYSTEM_DOCUMENTATION.md](./COMPLETE_SYSTEM_DOCUMENTATION.md)** ⭐ **START HERE** - Complete end-to-end documentation covering requirements, architecture, database schema, APIs, and implementation
+- **[CODE_STRUCTURE_GUIDE.md](./CODE_STRUCTURE_GUIDE.md)** - Code organization, file structure, and data flow
+- **[QUICK_IMPLEMENTATION_GUIDE.md](./QUICK_IMPLEMENTATION_GUIDE.md)** - 5-step quick start guide
+- **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - Index of all documentation files
+
+**🔍 Quick References:**
+- **Database Schema:** `database_schema.sql`
+- **House Mapping Queries:** `QUERY_HOUSE_MAPPINGS.md`
+- **Planetary Data Queries:** `QUERY_PLANETARY_DATA.md`
+- **Environment Setup:** `.env.example`
+
+**For detailed implementation, architecture, and API documentation, see [COMPLETE_SYSTEM_DOCUMENTATION.md](./COMPLETE_SYSTEM_DOCUMENTATION.md)**
 
 ## 🔧 Development
 
