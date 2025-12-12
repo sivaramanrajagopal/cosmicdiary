@@ -84,6 +84,131 @@ def get_planet_rasi(planet_data: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def extract_retrograde_planets(chart: Dict[str, Any]) -> List[str]:
+    """
+    Extract list of all retrograde planets from a chart.
+    
+    This is a convenience function that extracts retrograde planets
+    from the entire chart structure.
+    
+    Args:
+        chart: Chart data dictionary with planetary_positions key
+            Format: {
+                "planetary_positions": {
+                    "Sun": {"is_retrograde": False, ...},
+                    "Mars": {"is_retrograde": True, ...},
+                    ...
+                }
+            }
+    
+    Returns:
+        List of planet names that are retrograde (e.g., ["Saturn", "Jupiter"])
+        Empty list if no retrograde planets or chart structure invalid
+    
+    Example:
+        >>> chart = {
+        ...     "planetary_positions": {
+        ...         "Mars": {"is_retrograde": True},
+        ...         "Jupiter": {"is_retrograde": True},
+        ...         "Sun": {"is_retrograde": False}
+        ...     }
+        ... }
+        >>> extract_retrograde_planets(chart)
+        ['Mars', 'Jupiter']
+    """
+    return get_retrograde_planets(chart)
+
+
+def extract_planet_houses(chart: Dict[str, Any]) -> Dict[str, int]:
+    """
+    Extract house numbers for all planets from a chart.
+    
+    Args:
+        chart: Chart data dictionary with planetary_positions key
+            Format: {
+                "planetary_positions": {
+                    "Sun": {"house": 3, ...},
+                    "Mars": {"house": 1, ...},
+                    ...
+                }
+            }
+    
+    Returns:
+        Dictionary mapping planet names to house numbers (1-12)
+        Format: {"Sun": 3, "Mars": 1, "Jupiter": 5, ...}
+        Only includes planets with valid house numbers
+    
+    Example:
+        >>> chart = {
+        ...     "planetary_positions": {
+        ...         "Sun": {"house": 3},
+        ...         "Mars": {"house": 1},
+        ...         "Jupiter": {"house": None}  # Missing house
+        ...     }
+        ... }
+        >>> extract_planet_houses(chart)
+        {'Sun': 3, 'Mars': 1}
+    """
+    planet_houses = {}
+    planetary_positions = chart.get('planetary_positions', {})
+    
+    if not isinstance(planetary_positions, dict):
+        return planet_houses
+    
+    for planet_name, planet_data in planetary_positions.items():
+        if isinstance(planet_data, dict):
+            house = get_planet_house(planet_data)
+            if house is not None:
+                planet_houses[planet_name] = house
+    
+    return planet_houses
+
+
+def extract_planet_rasis(chart: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Extract rasi (zodiac sign) names for all planets from a chart.
+    
+    Args:
+        chart: Chart data dictionary with planetary_positions key
+            Format: {
+                "planetary_positions": {
+                    "Sun": {"rasi": {"name": "Scorpio"}, ...},
+                    "Mars": {"rasi": {"name": "Aries"}, ...},
+                    ...
+                }
+            }
+    
+    Returns:
+        Dictionary mapping planet names to rasi names
+        Format: {"Sun": "Scorpio", "Mars": "Aries", "Jupiter": "Cancer", ...}
+        Only includes planets with valid rasi data
+    
+    Example:
+        >>> chart = {
+        ...     "planetary_positions": {
+        ...         "Sun": {"rasi": {"name": "Scorpio"}},
+        ...         "Mars": {"rasi": {"name": "Aries"}},
+        ...         "Jupiter": {"rasi": None}  # Missing rasi
+        ...     }
+        ... }
+        >>> extract_planet_rasis(chart)
+        {'Sun': 'Scorpio', 'Mars': 'Aries'}
+    """
+    planet_rasis = {}
+    planetary_positions = chart.get('planetary_positions', {})
+    
+    if not isinstance(planetary_positions, dict):
+        return planet_rasis
+    
+    for planet_name, planet_data in planetary_positions.items():
+        if isinstance(planet_data, dict):
+            rasi = get_planet_rasi(planet_data)
+            if rasi is not None:
+                planet_rasis[planet_name] = rasi
+    
+    return planet_rasis
+
+
 def calculate_correlation_score(correlations: List[Dict[str, Any]]) -> float:
     """
     Calculate overall correlation score by summing individual correlation scores.
@@ -135,6 +260,33 @@ def categorize_correlation_strength(score: float) -> str:
         return "Low"
 
 
+def validate_chart_structure(chart: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """
+    Validate that chart has required structure for correlation analysis.
+    
+    Args:
+        chart: Chart data dictionary to validate
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+        - is_valid: True if chart structure is valid
+        - error_message: None if valid, error description if invalid
+    """
+    if not isinstance(chart, dict):
+        return False, "Chart must be a dictionary"
+    
+    # Check for planetary_positions
+    if 'planetary_positions' not in chart:
+        return False, "Chart missing 'planetary_positions' key"
+    
+    planetary_positions = chart.get('planetary_positions', {})
+    if not isinstance(planetary_positions, dict):
+        return False, "planetary_positions must be a dictionary"
+    
+    # Chart structure is valid (at minimum)
+    return True, None
+
+
 def correlate_event_with_snapshot(
     event_chart: Dict[str, Any],
     snapshot_chart: Dict[str, Any],
@@ -150,6 +302,8 @@ def correlate_event_with_snapshot(
     - House position matches
     - Aspect matches
     - Rasi (zodiac sign) matches
+    
+    If charts are incomplete or invalid, returns empty correlation with score 0.0.
     
     Args:
         event_chart: Event chart data from calculate_complete_chart() or event_chart_data
@@ -204,6 +358,21 @@ def correlate_event_with_snapshot(
         >>> result['correlation_score']
         0.35  # Lagna match (0.3) + House match (0.05)
     """
+    # Validate chart structures
+    event_valid, event_error = validate_chart_structure(event_chart)
+    snapshot_valid, snapshot_error = validate_chart_structure(snapshot_chart)
+    
+    if not event_valid or not snapshot_valid:
+        # Return empty correlation if charts are invalid
+        return {
+            "snapshot_id": snapshot_id,
+            "correlations": [],
+            "correlation_score": 0.0,
+            "total_matches": 0,
+            "strength": "Low",
+            "error": f"Invalid chart structure: {event_error or snapshot_error}"
+        }
+    
     correlations = []
     
     # Get planetary positions from both charts
