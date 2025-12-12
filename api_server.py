@@ -90,6 +90,9 @@ def is_retrograde(planet_num: int, planet_name: str, jd: float) -> bool:
     - Rahu and Ketu are ALWAYS retrograde (shadow planets always move backward)
     - Sun and Moon are NEVER retrograde (always move forward)
     - Other planets (Mercury, Venus, Mars, Jupiter, Saturn) are retrograde when speed < 0
+    
+    Note: The speed field from calc_ut() may be unreliable in sidereal mode,
+    so we calculate speed by comparing positions over a time interval.
     """
     # Rahu and Ketu are always retrograde
     if planet_name in ['Rahu', 'Ketu']:
@@ -99,12 +102,37 @@ def is_retrograde(planet_num: int, planet_name: str, jd: float) -> bool:
     if planet_num in [swe.SUN, swe.MOON]:
         return False
     
-    # For other planets, check speed
-    result = swe.calc_ut(jd, planet_num, swe.FLG_SWIEPH)
-    if result:
-        speed = result[0][3]  # Speed in longitude
-        return speed < 0
-    return False
+    # For other planets, calculate speed by comparing positions over time
+    # Use same flags as position calculation (sidereal)
+    flags = swe.FLG_SIDEREAL | swe.FLG_SWIEPH
+    
+    # Calculate position at current time
+    result1 = swe.calc_ut(jd, planet_num, flags)
+    if not result1:
+        return False
+    
+    # Calculate position 6 hours later (0.25 days) to get accurate speed
+    jd_future = jd + 0.25
+    result2 = swe.calc_ut(jd_future, planet_num, flags)
+    if not result2:
+        return False
+    
+    # Get longitudes
+    long1 = result1[0][0]
+    long2 = result2[0][0]
+    
+    # Calculate speed (handle 360° wrap-around)
+    diff = long2 - long1
+    if diff > 180:
+        diff -= 360
+    elif diff < -180:
+        diff += 360
+    
+    # Speed per day = diff / 0.25 days
+    speed_per_day = diff / 0.25
+    
+    # Retrograde if speed is negative
+    return speed_per_day < 0
 
 
 def calculate_planet_position(planet_name: str, jd: float) -> Optional[Dict]:
