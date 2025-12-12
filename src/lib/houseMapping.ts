@@ -1,13 +1,17 @@
 /**
  * Traditional Vedic Astrology House Mapping & Planetary Aspects
- * Based on Parasara method - Kalapurushan (Sign-based) chart
+ * Supports both Kalapurushan (Sign-based) and Ascendant-based methods
  */
 
-import { Event, Planet, PlanetaryData } from './types';
+import { Event, Planet, PlanetaryData, EventChartData } from './types';
+import { ChartData } from '@/components/charts/chart-types';
+import { getHouseForLongitude } from '@/components/charts/chart-utils';
 
 export interface HouseMapping {
   event_id: number;
-  house_number: number;
+  house_number: number;  // Kalapurushan house (1-12)
+  actual_house_number?: number;  // Ascendant-based house (1-12)
+  calculation_method?: 'kalapurushan' | 'ascendant-based';
   rasi_name: string;
   house_significations: string[];
   mapping_reason: string;
@@ -228,12 +232,258 @@ export function mapEventToHouse(event: Event): HouseMapping {
   return {
     event_id: event.id!,
     house_number: primaryHouse,
+    actual_house_number: undefined, // Will be set if chart data is available
+    calculation_method: 'kalapurushan',
     rasi_name: rasiName,
     house_significations: significations.filter(sig => 
       category.includes(sig) || eventTitle.includes(sig) || eventDescription.includes(sig)
     ),
     mapping_reason: reason,
   };
+}
+
+/**
+ * Map event to actual house based on ascendant and chart data
+ * This function uses the actual planetary positions to determine the house
+ */
+export function mapEventToActualHouse(
+  event: Event,
+  chartData: ChartData | EventChartData | null
+): HouseMapping {
+  // First get the Kalapurushan mapping
+  const kalapurushanMapping = mapEventToHouse(event);
+  
+  // If no chart data, return Kalapurushan mapping
+  if (!chartData) {
+    return kalapurushanMapping;
+  }
+
+  // Extract house cusps and ascendant from chart data
+  const houseCusps = Array.isArray(chartData.house_cusps || chartData.houseCusps)
+    ? (chartData.house_cusps || chartData.houseCusps)
+    : [];
+  
+  if (houseCusps.length !== 12) {
+    return kalapurushanMapping; // Invalid chart data, fallback to Kalapurushan
+  }
+
+  // Get the Kalapurushan house number
+  const kalapurushanHouse = kalapurushanMapping.house_number;
+  
+  // Get the rasi for this Kalapurushan house
+  const kalapurushanRasi = kalapurushanMapping.rasi_name;
+  
+  // Find the actual house based on which house contains planets related to this event
+  // For now, we'll use a simpler approach: find which house has the most relevant planets
+  // based on the event category, or use the Kalapurushan rasi to find the actual house
+  
+  // Get the ascendant rasi number
+  const ascRasiNum = chartData.ascendant_rasi_number || 
+    (typeof chartData.ascendant === 'object' ? chartData.ascendant.rasiNumber : 0);
+  
+  if (!ascRasiNum || ascRasiNum < 1 || ascRasiNum > 12) {
+    return kalapurushanMapping; // Invalid ascendant, fallback
+  }
+
+  // Calculate which house the Kalapurushan rasi falls into based on ascendant
+  // Rasi index (0-11): Aries=0, Taurus=1, ..., Pisces=11
+  const rasiNames = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+                      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  const kalapurushanRasiIndex = rasiNames.indexOf(kalapurushanRasi);
+  
+  if (kalapurushanRasiIndex === -1) {
+    return kalapurushanMapping; // Invalid rasi name, fallback
+  }
+
+  // Calculate actual house: if ascendant is in rasi X, then that rasi is house 1
+  // So rasi at index Y is house ((Y - X + 1 + 12) % 12) || 12
+  const actualHouseNum = ((kalapurushanRasiIndex - (ascRasiNum - 1) + 1 + 12) % 12) || 12;
+
+  // Get the rasi at the cusp of this actual house
+  const actualHouseCusp = houseCusps[actualHouseNum - 1];
+  const actualRasi = degreesToRasiForHouse(actualHouseCusp);
+
+  return {
+    ...kalapurushanMapping,
+    actual_house_number: actualHouseNum,
+    calculation_method: 'ascendant-based',
+    mapping_reason: `${kalapurushanMapping.mapping_reason} (Ascendant-based: House ${actualHouseNum}, Rasi: ${actualRasi})`,
+  };
+}
+
+/**
+ * Helper: Convert degrees to rasi name
+ */
+function degreesToRasiForHouse(degrees: number): string {
+  const rasiIndex = Math.floor((degrees % 360) / 30);
+  const rasiNames = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+                      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  return rasiNames[rasiIndex] || 'Aries';
+}
+
+/**
+ * Calculate aspects using actual house positions from chart data
+ */
+export function calculatePlanetaryAspectsWithActualHouses(
+  event: Event,
+  houseMapping: HouseMapping,
+  chartData: ChartData | EventChartData | null
+): PlanetaryAspect[] {
+  // Use actual house if available, otherwise fall back to Kalapurushan
+  const targetHouse = houseMapping.actual_house_number || houseMapping.house_number;
+  
+  // If no chart data, fall back to regular aspect calculation
+  if (!chartData) {
+    // Need planetary data - this will be called from storeCorrelations with planetary data
+    return [];
+  }
+
+  // Extract planetary positions from chart data
+  const planetaryPositions = chartData.planetary_positions || 
+    (typeof chartData === 'object' && 'planetaryPositions' in chartData ? chartData.planetaryPositions : {});
+  
+  const houseCusps = Array.isArray(chartData.house_cusps || chartData.houseCusps)
+    ? (chartData.house_cusps || chartData.houseCusps)
+    : [];
+
+  if (!planetaryPositions || houseCusps.length !== 12) {
+    return []; // Invalid chart data
+  }
+
+  const aspects: PlanetaryAspect[] = [];
+  const planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+
+  for (const planetName of planetNames) {
+    const planetData = planetaryPositions[planetName];
+    if (!planetData) continue;
+
+    const planetLongitude = planetData.longitude || 0;
+    const planetRasi = planetData.rasi?.name || planetData.rasi || 'Unknown';
+    const planetHouse = planetData.house || getHouseForLongitude(planetLongitude, houseCusps);
+
+    // Check conjunction (planet in target house)
+    if (planetHouse === targetHouse) {
+      aspects.push({
+        event_id: event.id!,
+        house_number: targetHouse,
+        planet_name: planetName,
+        aspect_type: 'conjunction',
+        planet_longitude: planetLongitude,
+        planet_rasi: planetRasi,
+        aspect_strength: 'strong',
+      });
+      continue; // Skip other aspects for conjunction
+    }
+
+    // Calculate aspects based on actual house positions
+    const aspectingHouses = calculateAspectingHousesFromActual(planetHouse, planetName);
+    
+    if (aspectingHouses.includes(targetHouse)) {
+      const aspectType = getAspectTypeFromActual(planetHouse, planetName, targetHouse);
+      
+      if (!aspectType) continue;
+
+      aspects.push({
+        event_id: event.id!,
+        house_number: targetHouse,
+        planet_name: planetName,
+        aspect_type: aspectType as PlanetaryAspect['aspect_type'],
+        planet_longitude: planetLongitude,
+        planet_rasi: planetRasi,
+        aspect_strength: getAspectStrength(aspectType),
+      });
+    }
+  }
+
+  return aspects;
+}
+
+/**
+ * Calculate which houses a planet aspects based on its actual house position
+ */
+function calculateAspectingHousesFromActual(planetHouse: number, planetName: string): number[] {
+  const aspectingHouses: number[] = [];
+
+  switch (planetName) {
+    case 'Jupiter':
+      aspectingHouses.push(
+        ((planetHouse + 4) % 12) || 12,
+        ((planetHouse + 6) % 12) || 12,
+        ((planetHouse + 8) % 12) || 12
+      );
+      break;
+    case 'Saturn':
+      aspectingHouses.push(
+        ((planetHouse + 2) % 12) || 12,
+        ((planetHouse + 6) % 12) || 12,
+        ((planetHouse + 9) % 12) || 12
+      );
+      break;
+    case 'Mars':
+      aspectingHouses.push(
+        ((planetHouse + 3) % 12) || 12,
+        ((planetHouse + 6) % 12) || 12,
+        ((planetHouse + 7) % 12) || 12
+      );
+      break;
+    case 'Rahu':
+    case 'Ketu':
+      aspectingHouses.push(
+        ((planetHouse + 2) % 12) || 12,
+        ((planetHouse + 6) % 12) || 12,
+        ((planetHouse + 10) % 12) || 12,
+        6, 8, 12 // Dustana houses
+      );
+      break;
+    default:
+      // Sun, Moon, Mercury, Venus: 7th only
+      aspectingHouses.push(((planetHouse + 6) % 12) || 12);
+  }
+
+  return [...new Set(aspectingHouses)].sort((a, b) => a - b);
+}
+
+/**
+ * Get aspect type based on actual house positions
+ */
+function getAspectTypeFromActual(planetHouse: number, planetName: string, targetHouse: number): string {
+  switch (planetName) {
+    case 'Jupiter':
+      if (targetHouse === ((planetHouse + 4) % 12 || 12)) return 'drishti_5th';
+      if (targetHouse === ((planetHouse + 6) % 12 || 12)) return 'drishti_7th';
+      if (targetHouse === ((planetHouse + 8) % 12 || 12)) return 'drishti_9th';
+      return '';
+    case 'Saturn':
+      if (targetHouse === ((planetHouse + 2) % 12 || 12)) return 'drishti_3rd';
+      if (targetHouse === ((planetHouse + 6) % 12 || 12)) return 'drishti_7th';
+      if (targetHouse === ((planetHouse + 9) % 12 || 12)) return 'drishti_10th';
+      return '';
+    case 'Mars':
+      if (targetHouse === ((planetHouse + 3) % 12 || 12)) return 'drishti_4th';
+      if (targetHouse === ((planetHouse + 6) % 12 || 12)) return 'drishti_7th';
+      if (targetHouse === ((planetHouse + 7) % 12 || 12)) return 'drishti_8th';
+      return '';
+    case 'Rahu':
+    case 'Ketu':
+      if (targetHouse === ((planetHouse + 2) % 12 || 12)) return 'drishti_3rd';
+      if (targetHouse === ((planetHouse + 6) % 12 || 12)) return 'drishti_7th';
+      if (targetHouse === ((planetHouse + 10) % 12 || 12)) return 'drishti_11th';
+      if ([6, 8, 12].includes(targetHouse)) return 'dustana';
+      return '';
+    default:
+      if (targetHouse === ((planetHouse + 6) % 12 || 12)) return 'drishti_7th';
+      return '';
+  }
+}
+
+/**
+ * Get aspect strength based on aspect type
+ */
+function getAspectStrength(aspectType: string): 'strong' | 'moderate' | 'weak' {
+  if (aspectType === 'conjunction') return 'strong';
+  if (['drishti_7th', 'dustana'].includes(aspectType)) return 'strong';
+  if (['drishti_3rd', 'drishti_5th', 'drishti_9th', 'drishti_11th'].includes(aspectType)) return 'moderate';
+  return 'weak';
 }
 
 /**

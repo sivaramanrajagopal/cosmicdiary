@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Event, PlanetaryData, EventPlanetaryCorrelation, EventHouseMapping, EventPlanetaryAspect } from './types';
+import { Event, PlanetaryData, EventPlanetaryCorrelation, EventHouseMapping, EventPlanetaryAspect, EventChartData } from './types';
 
 export async function getEvents(date?: string): Promise<Event[]> {
   try {
@@ -263,6 +263,8 @@ export async function createHouseMapping(
       .upsert([{
         event_id: mapping.event_id,
         house_number: mapping.house_number,
+        actual_house_number: mapping.actual_house_number ?? null,
+        calculation_method: mapping.calculation_method || 'kalapurushan',
         rasi_name: mapping.rasi_name,
         house_significations: mapping.house_significations,
         mapping_reason: mapping.mapping_reason,
@@ -281,9 +283,13 @@ export async function createHouseMapping(
       id: data.id,
       event_id: data.event_id,
       house_number: data.house_number,
+      actual_house_number: data.actual_house_number ?? undefined,
+      calculation_method: data.calculation_method || 'kalapurushan',
       rasi_name: data.rasi_name,
-      house_significations: data.house_significations || [],
-      mapping_reason: data.mapping_reason,
+      house_significations: Array.isArray(data.house_significations)
+        ? data.house_significations
+        : (data.house_significations ? JSON.parse(data.house_significations as string) : []),
+      mapping_reason: data.mapping_reason || undefined,
       created_at: data.created_at,
       updated_at: data.updated_at,
     };
@@ -309,9 +315,13 @@ export async function getHouseMapping(eventId: number): Promise<EventHouseMappin
       id: data.id,
       event_id: data.event_id,
       house_number: data.house_number,
+      actual_house_number: data.actual_house_number ?? undefined,
+      calculation_method: data.calculation_method || 'kalapurushan',
       rasi_name: data.rasi_name,
-      house_significations: data.house_significations || [],
-      mapping_reason: data.mapping_reason,
+      house_significations: Array.isArray(data.house_significations)
+        ? data.house_significations
+        : (data.house_significations ? JSON.parse(data.house_significations as string) : []),
+      mapping_reason: data.mapping_reason || undefined,
       created_at: data.created_at,
       updated_at: data.updated_at,
     };
@@ -394,6 +404,83 @@ export async function getPlanetaryAspects(eventId: number): Promise<EventPlaneta
   } catch (error) {
     console.error('Error fetching planetary aspects:', error);
     return [];
+  }
+}
+
+// ============================================================================
+// Chart Data Functions
+// ============================================================================
+
+export async function getEventChartData(eventId: number): Promise<EventChartData | null> {
+  try {
+    const { data, error } = await supabase
+      .from('event_chart_data')
+      .select('*')
+      .eq('event_id', eventId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching chart data:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      event_id: data.event_id,
+      ascendant_degree: data.ascendant_degree,
+      ascendant_rasi: data.ascendant_rasi,
+      ascendant_rasi_number: data.ascendant_rasi_number,
+      ascendant_nakshatra: data.ascendant_nakshatra || undefined,
+      ascendant_lord: data.ascendant_lord,
+      house_cusps: Array.isArray(data.house_cusps)
+        ? data.house_cusps
+        : (typeof data.house_cusps === 'string' ? JSON.parse(data.house_cusps) : []),
+      house_system: data.house_system,
+      julian_day: data.julian_day,
+      sidereal_time: data.sidereal_time || undefined,
+      ayanamsa: data.ayanamsa,
+      planetary_positions: typeof data.planetary_positions === 'string'
+        ? JSON.parse(data.planetary_positions)
+        : data.planetary_positions,
+      planetary_strengths: typeof data.planetary_strengths === 'string'
+        ? JSON.parse(data.planetary_strengths)
+        : data.planetary_strengths,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('Error in getEventChartData:', error);
+    return null;
+  }
+}
+
+export async function storeEventChartData(
+  eventId: number,
+  chartData: Omit<EventChartData, 'id' | 'event_id' | 'created_at' | 'updated_at'>
+): Promise<EventChartData | null> {
+  try {
+    const { data, error } = await supabase
+      .from('event_chart_data')
+      .upsert([{
+        event_id: eventId,
+        ...chartData,
+      }], {
+        onConflict: 'event_id',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error storing chart data:', error);
+      return null;
+    }
+
+    return getEventChartData(eventId);
+  } catch (error) {
+    console.error('Error in storeEventChartData:', error);
+    return null;
   }
 }
 

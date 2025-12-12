@@ -66,7 +66,9 @@ export interface EventPlanetaryCorrelation {
 export interface EventHouseMapping {
   id?: number;
   event_id: number;
-  house_number: number;  // 1-12
+  house_number: number;  // 1-12 (Kalapurushan house)
+  actual_house_number?: number;  // 1-12 (Ascendant-based house)
+  calculation_method?: 'kalapurushan' | 'ascendant-based';
   rasi_name: string;
   house_significations: string[];
   mapping_reason?: string;
@@ -83,6 +85,26 @@ export interface EventPlanetaryAspect {
   planet_longitude: number;
   planet_rasi: string;
   aspect_strength: 'strong' | 'moderate' | 'weak';
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Chart-related types (re-exported from components/charts/chart-types.ts)
+export interface EventChartData {
+  id?: number;
+  event_id: number;
+  ascendant_degree: number;
+  ascendant_rasi: string;
+  ascendant_rasi_number: number;
+  ascendant_nakshatra?: string;
+  ascendant_lord: string;
+  house_cusps: number[];
+  house_system: string;
+  julian_day: number;
+  sidereal_time?: number;
+  ayanamsa: number;
+  planetary_positions: any; // JSONB - will be parsed
+  planetary_strengths: any; // JSONB - will be parsed
   created_at?: string;
   updated_at?: string;
 }

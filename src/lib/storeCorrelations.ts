@@ -1,7 +1,9 @@
-import { Event, PlanetaryData, EventPlanetaryCorrelation } from './types';
-import { getPlanetaryData, createCorrelation, createHouseMapping, createPlanetaryAspect } from './database';
+import { Event, PlanetaryData, EventPlanetaryCorrelation, EventChartData } from './types';
+import { getPlanetaryData, createCorrelation, createHouseMapping, createPlanetaryAspect, getEventChartData } from './database';
 import { analyzeEventPlanetaryCorrelation } from './astrologyAnalysis';
-import { mapEventToHouse, calculatePlanetaryAspects } from './houseMapping';
+import { mapEventToHouse, mapEventToActualHouse, calculatePlanetaryAspects, calculatePlanetaryAspectsWithActualHouses } from './houseMapping';
+import { ChartData } from '@/components/charts/chart-types';
+import { transformChartDataFromDB } from '@/components/charts/chart-utils';
 
 /**
  * Calculate and store planetary correlations for an event in the database
@@ -85,12 +87,32 @@ export async function calculateAndStoreCorrelations(event: Event): Promise<Event
     }
   }
   
-  // Calculate and store house mapping
-  const houseMapping = mapEventToHouse(event);
+  // Get chart data if available (for ascendant-based mapping)
+  let chartData: ChartData | null = null;
+  const dbChartData = await getEventChartData(event.id!);
+  if (dbChartData) {
+    try {
+      chartData = transformChartDataFromDB(dbChartData);
+    } catch (err) {
+      console.error('Error transforming chart data for house mapping:', err);
+    }
+  }
+
+  // Calculate house mapping (use ascendant-based if chart data available)
+  const houseMapping = chartData
+    ? mapEventToActualHouse(event, chartData)
+    : mapEventToHouse(event);
+  
   const storedMapping = await createHouseMapping(houseMapping);
   
-  // Calculate and store planetary aspects
-  const aspects = calculatePlanetaryAspects(event, houseMapping, planetaryData);
+  // Calculate and store planetary aspects (use actual houses if chart data available)
+  let aspects;
+  if (chartData) {
+    aspects = calculatePlanetaryAspectsWithActualHouses(event, houseMapping, chartData);
+  } else {
+    aspects = calculatePlanetaryAspects(event, houseMapping, planetaryData);
+  }
+  
   let aspectCount = 0;
   for (const aspect of aspects) {
     const stored = await createPlanetaryAspect(aspect);
@@ -99,7 +121,8 @@ export async function calculateAndStoreCorrelations(event: Event): Promise<Event
     }
   }
   
-  console.log(`✅ Stored for event ${event.id}: ${correlations.length} correlations, 1 house mapping, ${aspectCount} aspects`);
+  const method = chartData ? 'ascendant-based' : 'kalapurushan';
+  console.log(`✅ Stored for event ${event.id}: ${correlations.length} correlations, 1 house mapping (${method}), ${aspectCount} aspects`);
   return correlations;
 }
 

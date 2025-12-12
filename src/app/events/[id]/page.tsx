@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getEventById, getPlanetaryDataForEvent, getHouseMapping, getPlanetaryAspects } from '@/lib/database';
+import { getEventById, getPlanetaryDataForEvent, getHouseMapping, getPlanetaryAspects, getEventChartData } from '@/lib/database';
 import { format } from 'date-fns';
 import TransitTable from '@/components/TransitTable';
+import ChartSection from '@/components/charts/ChartSection';
 import { Event } from '@/lib/types';
 
 async function PlanetaryDataSection({ event }: { event: Event }) {
@@ -39,9 +40,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  // Get house mapping and aspects
+  // Get house mapping, aspects, and chart data
   const houseMapping = await getHouseMapping(eventId);
   const aspects = await getPlanetaryAspects(eventId);
+  const chartData = await getEventChartData(eventId);
 
   return (
     <div className="space-y-6">
@@ -116,6 +118,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
+      {/* Astrological Chart Section */}
+      <ChartSection
+        eventId={eventId}
+        eventDate={event.date}
+        eventTime={event.event_time}
+        hasLocation={event.latitude !== undefined && event.longitude !== undefined}
+        initialChartData={chartData || undefined}
+      />
+
       <PlanetaryDataSection event={event} />
 
       {/* House Mapping Section */}
@@ -127,13 +138,28 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               <h4 className="text-sm font-medium text-slate-400 mb-2">House Information</h4>
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-400">House Number: </span>
+                  <span className="text-slate-400">Kalapurushan House: </span>
                   <span className="text-2xl font-bold text-purple-400">{houseMapping.house_number}</span>
                 </div>
+                {houseMapping.actual_house_number && (
+                  <div>
+                    <span className="text-slate-400">Ascendant-based House: </span>
+                    <span className="text-2xl font-bold text-green-400">{houseMapping.actual_house_number}</span>
+                    <span className="text-xs text-slate-500 ml-2">(Actual)</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-slate-400">Rasi: </span>
                   <span className="text-lg font-semibold text-blue-400">{houseMapping.rasi_name}</span>
                 </div>
+                {houseMapping.calculation_method && (
+                  <div>
+                    <span className="text-slate-400">Method: </span>
+                    <span className="text-sm px-2 py-1 rounded bg-purple-900/50 text-purple-300">
+                      {houseMapping.calculation_method === 'ascendant-based' ? 'Ascendant-based' : 'Kalapurushan'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             {houseMapping.house_significations && houseMapping.house_significations.length > 0 && (
