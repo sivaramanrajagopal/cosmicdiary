@@ -1,29 +1,32 @@
-# Core dependencies
+# Cosmic Diary - Python Dependencies
+# Last Updated: 2025-12-12
+
+# Core Web Framework
 flask==3.0.0
 flask-cors==4.0.0
 
-# Swiss Ephemeris for planetary calculations
-pyswisseph==2.10.3.2
-
 # Database
-supabase==2.0.0
 psycopg2-binary==2.9.9
+supabase==2.0.0
 
 # API and HTTP
+openai==1.6.1
 requests==2.31.0
+
+# Environment and Configuration
 python-dotenv==1.0.0
 
-# OpenAI for automated event collection
-openai==1.6.1
+# Astrological Calculations
+pyswisseph==2.10.3.2
 
-# Email
-# Note: smtplib and email are built-in Python modules
-
-# Date/time handling
-python-dateutil==2.8.2
+# Date/Time Handling
 pytz==2024.1
-timezonefinder==6.2.0
+python-dateutil==2.8.2
+timezonefinder==6.5.2
 
-# Type checking (optional but recommended)
+# Geocoding (for location lookup)
+geopy==2.4.1
+
+# Type Checking (optional but recommended)
 mypy==1.7.1
 types-requests==2.31.0.10
