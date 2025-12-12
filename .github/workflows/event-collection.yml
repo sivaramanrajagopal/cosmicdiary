@@ -27,13 +27,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install openai supabase python-dotenv pyswisseph pytz timezonefinder
       
-      - name: Run event collection with cosmic state
+      - name: Run enhanced event collection
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FLASK_API_URL: ${{ secrets.FLASK_API_URL }}
         run: |
-          python collect_events_with_cosmic_state.py
+          cd CosmicDiary
+          python import_automated_events.py
         continue-on-error: false
       
       - name: Report Success Statistics

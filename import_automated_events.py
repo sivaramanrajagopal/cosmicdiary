@@ -119,6 +119,27 @@ def store_event(supabase: Client, event_data: Dict, target_date: date, planetary
         # Extract astrological relevance if available
         astro_relevance = event_data.get('astrological_relevance', {})
         
+        # Prepare astrological_metadata JSONB structure
+        astrological_metadata = None
+        if astro_relevance:
+            astrological_metadata = {
+                'primary_houses': astro_relevance.get('primary_houses', []),
+                'primary_planets': astro_relevance.get('primary_planets', []),
+                'keywords': astro_relevance.get('keywords', []),
+                'reasoning': astro_relevance.get('reasoning', '')
+            }
+        
+        # Extract impact_metrics
+        impact_metrics = event_data.get('impact_metrics', {})
+        
+        # Extract research_score (already calculated in main())
+        research_score = event_data.get('research_score')
+        
+        # Extract sources
+        sources = event_data.get('sources', [])
+        if not isinstance(sources, list):
+            sources = []
+        
         # Prepare event record
         event_record = {
             'date': event_data.get('date', target_date.isoformat()),
@@ -131,10 +152,15 @@ def store_event(supabase: Client, event_data: Dict, target_date: date, planetary
             'impact_level': event_data.get('impact_level', 'medium'),
             'event_type': 'world',
             'tags': event_data.get('tags', []),
-            # Enhanced fields
-            'event_time': event_data.get('time') if event_data.get('time') != 'estimated' else None,
+            # Enhanced time fields
+            'event_time': event_data.get('time') if event_data.get('time') and event_data.get('time') != 'estimated' else None,
             'timezone': event_data.get('timezone', 'UTC'),
-            'has_accurate_time': event_data.get('time') is not None and event_data.get('time') != 'estimated'
+            'has_accurate_time': event_data.get('time') is not None and event_data.get('time') != 'estimated',
+            # NEW: Astrological metadata fields (Migration 007)
+            'astrological_metadata': astrological_metadata,
+            'impact_metrics': impact_metrics if impact_metrics else None,
+            'research_score': research_score,
+            'sources': sources
         }
         
         result = supabase.table('events').insert(event_record).execute()
@@ -142,6 +168,10 @@ def store_event(supabase: Client, event_data: Dict, target_date: date, planetary
         if result.data and len(result.data) > 0:
             event_id = result.data[0]['id']
             print(f"✅ Stored event: {event_record['title']} (ID: {event_id})")
+            if research_score is not None:
+                print(f"   Research Score: {research_score:.2f}/100")
+            if astrological_metadata:
+                print(f"   Houses: {astro_relevance.get('primary_houses', [])}, Planets: {astro_relevance.get('primary_planets', [])}")
             return event_id
         else:
             print(f"❌ Failed to store event: {event_record['title']}")
