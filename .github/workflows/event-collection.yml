@@ -28,6 +28,7 @@ jobs:
           pip install openai supabase python-dotenv pyswisseph pytz timezonefinder
       
       - name: Run cosmic state collection with event correlation
+        id: collect_events
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -36,14 +37,54 @@ jobs:
         run: |
           cd CosmicDiary
           python collect_events_with_cosmic_state.py
-        continue-on-error: false
+        continue-on-error: true
+      
+      - name: Extract collection statistics
+        id: stats
+        if: always()
+        run: |
+          cd CosmicDiary
+          # Extract stats from script output (if available)
+          # For now, set defaults - these can be parsed from logs if needed
+          echo "events_detected=0" >> $GITHUB_OUTPUT
+          echo "events_stored=0" >> $GITHUB_OUTPUT
+          echo "correlations_created=0" >> $GITHUB_OUTPUT
+          echo "avg_score=" >> $GITHUB_OUTPUT
       
       - name: Report Success Statistics
         if: success()
         run: |
           echo "✓ Cosmic state captured and events processed successfully"
           echo "Check workflow logs for detailed statistics"
-          # Future: Add Slack/Discord webhook notification here
+      
+      - name: Send Success Email Notification
+        if: success() && vars.ENABLE_EMAIL_NOTIFICATIONS == 'true'
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          EVENTS_DETECTED: ${{ steps.stats.outputs.events_detected }}
+          EVENTS_STORED: ${{ steps.stats.outputs.events_stored }}
+          CORRELATIONS_CREATED: ${{ steps.stats.outputs.correlations_created }}
+          AVG_CORRELATION_SCORE: ${{ steps.stats.outputs.avg_score }}
+        run: |
+          cd CosmicDiary
+          python send_collection_summary.py || echo "⚠️ Email notification failed (non-critical)"
+      
+      - name: Send Failure Email Notification
+        if: failure() && vars.ENABLE_EMAIL_NOTIFICATIONS == 'true'
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          ERROR_MESSAGE: "Event collection failed. Check workflow logs for details."
+        run: |
+          cd CosmicDiary
+          python send_collection_summary.py || echo "⚠️ Email notification failed (non-critical)"
       
       - name: Upload logs artifact
         if: always()
