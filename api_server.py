@@ -22,7 +22,14 @@ allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
 if allowed_origins and allowed_origins[0]:  # If specific origins provided
     CORS(app, origins=allowed_origins)
 else:  # Default: allow all origins (development-friendly)
-    CORS(app)  # Enable CORS for Next.js frontend
+    # Allow Vercel deployment and local development
+    CORS(app, origins=[
+        'https://cosmicdiary.vercel.app',
+        'https://*.vercel.app',  # All Vercel preview deployments
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+    ], supports_credentials=True)  # Enable CORS for Next.js frontend
 
 # Swiss Ephemeris settings
 # Lahiri ayanamsa = 1
