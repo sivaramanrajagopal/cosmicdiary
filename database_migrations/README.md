@@ -34,6 +34,18 @@ Updates event_house_mappings table to support ascendant-based calculations:
 **Date**: 2025-12-12  
 **Dependencies**: Requires existing event_house_mappings table
 
+### 007_add_astrological_metadata.sql
+Adds astrological metadata fields to events table for enhanced event collection:
+- `astrological_metadata` (JSONB) - Houses, planets, keywords, reasoning
+- `impact_metrics` (JSONB) - Quantifiable impact data (deaths, affected, financial, etc.)
+- `research_score` (REAL) - Research worthiness score (0-100)
+- `sources` (JSONB) - Array of source URLs
+- Includes 4 indexes (including 3 GIN indexes for JSONB fields)
+
+**Status**: Ready to apply  
+**Date**: 2025-12-12  
+**Dependencies**: Requires events table
+
 ### 008_create_cosmic_snapshots.sql
 Creates table to store planetary state snapshots captured every 2 hours:
 - `cosmic_snapshots` table with 22 columns
