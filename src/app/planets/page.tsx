@@ -18,7 +18,9 @@ export default function PlanetsPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/planetary-data?date=${date}`);
+        // Add force_refresh=true to always get fresh data from Flask API
+        // This ensures retrograde status is calculated correctly
+        const response = await fetch(`/api/planetary-data?date=${date}&force_refresh=true`);
         if (response.ok) {
           const data = await response.json();
           setPlanetaryData(data);

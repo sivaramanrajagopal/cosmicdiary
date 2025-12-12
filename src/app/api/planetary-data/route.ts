@@ -32,12 +32,15 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // First, try to get from database
-    let planetaryData = await getPlanetaryData(date);
+    // Check for force refresh parameter
+    const forceRefresh = request.nextUrl.searchParams.get('force_refresh') === 'true';
     
-    // If not in database, fetch from Flask API (Swiss Ephemeris calculation)
+    // First, try to get from database (unless force refresh is requested)
+    let planetaryData = forceRefresh ? null : await getPlanetaryData(date);
+    
+    // If not in database or force refresh, fetch from Flask API (Swiss Ephemeris calculation)
     if (!planetaryData) {
-      console.log(`📡 Planetary data not in database for ${date}, fetching from Flask API...`);
+      console.log(`📡 ${forceRefresh ? 'Force refreshing' : 'Planetary data not in database'} for ${date}, fetching from Flask API...`);
       const flaskData = await fetchFromFlaskAPI(date);
       
       if (flaskData) {
