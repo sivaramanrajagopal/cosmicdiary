@@ -34,6 +34,18 @@ Updates event_house_mappings table to support ascendant-based calculations:
 **Date**: 2025-12-12  
 **Dependencies**: Requires existing event_house_mappings table
 
+### 008_create_cosmic_snapshots.sql
+Creates table to store planetary state snapshots captured every 2 hours:
+- `cosmic_snapshots` table with 22 columns
+- Stores lagna, planetary positions, active aspects, yogas, and moon details
+- Reference location defaults to Delhi, India (configurable)
+- Includes 6 indexes (3 GIN indexes for JSONB fields)
+- Enables temporal correlation analysis of planetary influences
+
+**Status**: Ready to apply  
+**Date**: 2025-12-12  
+**Dependencies**: None (standalone table)
+
 ## How to Apply Migrations
 
 ### Method 1: Supabase Dashboard (Recommended)
@@ -65,7 +77,11 @@ supabase migration up
 Always apply migrations in numerical order:
 - `001_add_time_to_events.sql` (first)
 - `002_...sql` (next)
+- `003_...sql` (next)
+- `008_...sql` (can be applied independently)
 - etc.
+
+**Note**: Migration numbers may not be sequential (e.g., 008) if intermediate migrations were skipped or planned for future use.
 
 ## Verification
 
