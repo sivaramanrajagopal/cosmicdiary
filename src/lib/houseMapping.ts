@@ -259,8 +259,11 @@ export function mapEventToActualHouse(
   }
 
   // Extract house cusps and ascendant from chart data
-  const houseCusps = Array.isArray((chartData as any).house_cusps) ? (chartData as any).house_cusps : (chartData as any).houseCusps || []
-    ? (chartData.house_cusps || chartData.houseCusps)
+  // Handle both EventChartData (house_cusps) and ChartData (houseCusps) formats
+  const houseCusps = Array.isArray((chartData as any).house_cusps) 
+    ? (chartData as any).house_cusps 
+    : Array.isArray((chartData as any).houseCusps)
+    ? (chartData as any).houseCusps
     : [];
   
   if (houseCusps.length !== 12) {
