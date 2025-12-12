@@ -82,12 +82,24 @@ def degrees_to_rasi(longitude: float) -> Dict:
     }
 
 
-def is_retrograde(planet_num: int, jd: float) -> bool:
-    """Check if planet is retrograde"""
-    if planet_num in [swe.SUN, swe.MOON, swe.TRUE_NODE]:
-        return False  # Sun, Moon, and nodes are never retrograde
+def is_retrograde(planet_num: int, planet_name: str, jd: float) -> bool:
+    """
+    Check if planet is retrograde
     
-    # Get planet speed
+    Vedic Astrology Rules:
+    - Rahu and Ketu are ALWAYS retrograde (shadow planets always move backward)
+    - Sun and Moon are NEVER retrograde (always move forward)
+    - Other planets (Mercury, Venus, Mars, Jupiter, Saturn) are retrograde when speed < 0
+    """
+    # Rahu and Ketu are always retrograde
+    if planet_name in ['Rahu', 'Ketu']:
+        return True
+    
+    # Sun and Moon are never retrograde
+    if planet_num in [swe.SUN, swe.MOON]:
+        return False
+    
+    # For other planets, check speed
     result = swe.calc_ut(jd, planet_num, swe.FLG_SWIEPH)
     if result:
         speed = result[0][3]  # Speed in longitude
@@ -117,7 +129,7 @@ def calculate_planet_position(planet_name: str, jd: float) -> Optional[Dict]:
             'name': 'Ketu',
             'longitude': round(ketu_long, 2),
             'latitude': 0.0,
-            'is_retrograde': False,  # Nodes don't retrograde
+            'is_retrograde': True,  # Ketu is ALWAYS retrograde in Vedic astrology
             'nakshatra': degrees_to_nakshatra(ketu_long),
             'rasi': degrees_to_rasi(ketu_long)
         }
@@ -132,7 +144,7 @@ def calculate_planet_position(planet_name: str, jd: float) -> Optional[Dict]:
     # Get sidereal longitude
     longitude = result[0][0]
     latitude = result[0][1]
-    is_retro = is_retrograde(planet_num, jd)
+    is_retro = is_retrograde(planet_num, planet_name, jd)
     
     return {
         'name': planet_name,

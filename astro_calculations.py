@@ -246,7 +246,7 @@ def calculate_planetary_positions(jd: float, house_cusps: List[float]) -> List[D
                     'longitude': round(ketu_long, 6),
                     'latitude': 0.0,
                     'speed': 0.0,
-                    'is_retrograde': False,
+                    'is_retrograde': True,  # Ketu is ALWAYS retrograde in Vedic astrology
                     'rasi': degrees_to_rasi(ketu_long),
                     'nakshatra': degrees_to_nakshatra(ketu_long),
                     'house': get_house_number(ketu_long, house_cusps)
@@ -261,7 +261,17 @@ def calculate_planetary_positions(jd: float, house_cusps: List[float]) -> List[D
                 longitude = result[0][0]
                 latitude = result[0][1]
                 speed = result[0][3]  # Speed in longitude
-                is_retro = speed < 0
+                
+                # Determine retrograde status based on Vedic astrology rules:
+                # - Rahu and Ketu are ALWAYS retrograde (shadow planets)
+                # - Sun and Moon are NEVER retrograde
+                # - Other planets are retrograde when speed < 0
+                if planet_name == 'Rahu':
+                    is_retro = True  # Rahu is ALWAYS retrograde
+                elif planet_name in ['Sun', 'Moon']:
+                    is_retro = False  # Sun and Moon are NEVER retrograde
+                else:
+                    is_retro = speed < 0  # Other planets based on speed
                 
                 planet_data = {
                     'name': planet_name,
