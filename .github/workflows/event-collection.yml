@@ -11,6 +11,9 @@ jobs:
     name: Collect Events and Capture Cosmic State
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write  # Required to create issues on failure
     
     steps:
       - name: Checkout repository
@@ -35,7 +38,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FLASK_API_URL: ${{ secrets.FLASK_API_URL }}
         run: |
-          cd CosmicDiary
           python collect_events_with_cosmic_state.py
         continue-on-error: true
       
@@ -43,7 +45,6 @@ jobs:
         id: stats
         if: always()
         run: |
-          cd CosmicDiary
           # Extract stats from script output (if available)
           # For now, set defaults - these can be parsed from logs if needed
           echo "events_detected=0" >> $GITHUB_OUTPUT
@@ -70,7 +71,6 @@ jobs:
           CORRELATIONS_CREATED: ${{ steps.stats.outputs.correlations_created }}
           AVG_CORRELATION_SCORE: ${{ steps.stats.outputs.avg_score }}
         run: |
-          cd CosmicDiary
           python send_collection_summary.py || echo "⚠️ Email notification failed (non-critical)"
       
       - name: Send Failure Email Notification
@@ -83,7 +83,6 @@ jobs:
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
           ERROR_MESSAGE: "Event collection failed. Check workflow logs for details."
         run: |
-          cd CosmicDiary
           python send_collection_summary.py || echo "⚠️ Email notification failed (non-critical)"
       
       - name: Upload logs artifact
@@ -99,17 +98,24 @@ jobs:
         if: failure()
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = '🚨 Cosmic State Collection Failed';
-            const body = `Cosmic state collection and event detection job failed at ${new Date().toISOString()}\n\n` +
-                         `This means we missed capturing the planetary state for this 2-hour window.\n\n` +
-                         `Check logs: ${context.payload.repository.html_url}/actions/runs/${context.runId}`;
-            
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: ['bug', 'automation']
-            });
+            try {
+              const title = '🚨 Cosmic State Collection Failed';
+              const body = `Cosmic state collection and event detection job failed at ${new Date().toISOString()}\n\n` +
+                           `This means we missed capturing the planetary state for this 2-hour window.\n\n` +
+                           `Check logs: ${context.payload.repository.html_url}/actions/runs/${context.runId}`;
+              
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['bug', 'automation']
+              });
+              console.log('✅ Issue created successfully');
+            } catch (error) {
+              console.log('⚠️ Could not create issue (permissions may be restricted):', error.message);
+              console.log('This is non-critical - workflow will still be marked as failed');
+            }
 
