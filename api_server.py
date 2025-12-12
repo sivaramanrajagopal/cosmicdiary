@@ -16,7 +16,13 @@ from timezonefinder import TimezoneFinder
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for Next.js frontend
+
+# Configure CORS - Allow Vercel and local development
+allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
+if allowed_origins and allowed_origins[0]:  # If specific origins provided
+    CORS(app, origins=allowed_origins)
+else:  # Default: allow all origins (development-friendly)
+    CORS(app)  # Enable CORS for Next.js frontend
 
 # Swiss Ephemeris settings
 # Lahiri ayanamsa = 1
