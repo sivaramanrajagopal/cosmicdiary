@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install openai supabase python-dotenv pyswisseph pytz timezonefinder
+          pip install openai supabase python-dotenv pyswisseph pytz timezonefinder geopy requests
       
       - name: Run cosmic state collection with event correlation
         id: collect_events
