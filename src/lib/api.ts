@@ -31,7 +31,7 @@ export async function fetchEventById(id: string): Promise<Event | null> {
   }
 }
 
-export async function createEvent(event: Omit<Event, 'id' | 'created_at'>): Promise<Event | null> {
+export async function createEvent(event: Omit<Event, 'id' | 'created_at' | 'updated_at'>): Promise<Event | null> {
   try {
     const response = await fetch('/api/events', {
       method: 'POST',

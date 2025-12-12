@@ -18,6 +18,9 @@ export interface Planet {
 export interface Event {
   id?: number;  // BIGSERIAL, not UUID
   date: string;
+  event_time?: string;  // TIME format (HH:MM:SS)
+  timezone?: string;  // IANA timezone string (e.g., 'Asia/Kolkata')
+  has_accurate_time?: boolean;  // Flag indicating if exact time is known
   title: string;
   description?: string;
   category: string;

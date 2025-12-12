@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
 
     const eventData: Omit<Event, 'id' | 'created_at' | 'updated_at'> = {
       date: body.date,
+      event_time: body.event_time || undefined,
+      timezone: body.timezone || undefined,
+      has_accurate_time: body.has_accurate_time ?? undefined,
       title: body.title,
       description: body.description || '',
       category: body.category || '',

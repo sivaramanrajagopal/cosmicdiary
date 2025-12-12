@@ -402,6 +402,9 @@ function formatEvent(data: any): Event {
   return {
     id: data.id,
     date: data.date,
+    event_time: data.event_time || undefined,
+    timezone: data.timezone || undefined,
+    has_accurate_time: data.has_accurate_time ?? undefined,
     title: data.title,
     description: data.description || '',
     category: data.category,
