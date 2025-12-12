@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import TransitTable from '@/components/TransitTable';
+import PlanetaryPositionChart from '@/components/PlanetaryPositionChart';
 import { PlanetaryData } from '@/lib/types';
 
 export default function PlanetsPage() {
@@ -55,10 +56,18 @@ export default function PlanetsPage() {
           <p className="text-slate-400">Loading planetary data...</p>
         </div>
       ) : planetaryData?.planetary_data?.planets ? (
-        <div>
+        <div className="space-y-6">
           <p className="text-slate-400 mb-4">
             Planetary positions for {format(new Date(date), 'MMMM dd, yyyy')}
           </p>
+          
+          {/* South Indian Chart */}
+          <PlanetaryPositionChart 
+            planets={planetaryData.planetary_data.planets} 
+            selectedDate={format(new Date(date), 'MMMM dd, yyyy')}
+          />
+          
+          {/* Transit Table */}
           <TransitTable planets={planetaryData.planetary_data.planets} />
         </div>
       ) : (
