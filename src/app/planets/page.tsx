@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import TransitTable from '@/components/TransitTable';
 import PlanetaryPositionChart from '@/components/PlanetaryPositionChart';
 import { PlanetaryData } from '@/lib/types';
 
-export default function PlanetsPage() {
+function PlanetsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const date = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
@@ -80,5 +80,17 @@ export default function PlanetsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PlanetsPage() {
+  return (
+    <Suspense fallback={
+      <div className="text-center py-12 bg-slate-800/50 rounded-lg border border-slate-700">
+        <p className="text-slate-400">Loading...</p>
+      </div>
+    }>
+      <PlanetsContent />
+    </Suspense>
   );
 }

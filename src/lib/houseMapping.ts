@@ -345,11 +345,24 @@ export function calculatePlanetaryAspectsWithActualHouses(
   }
 
   // Extract planetary positions from chart data
-  const planetaryPositions = chartData.planetary_positions || 
-    (typeof chartData === 'object' && 'planetaryPositions' in chartData ? chartData.planetaryPositions : {});
+  // Handle both EventChartData (planetary_positions) and ChartData (planets array) formats
+  let planetaryPositions: any = {};
   
-  const houseCusps = Array.isArray(chartData.house_cusps || chartData.houseCusps)
-    ? (chartData.house_cusps || chartData.houseCusps)
+  if ((chartData as any).planetary_positions) {
+    // EventChartData format: planetary_positions is a dictionary
+    planetaryPositions = (chartData as any).planetary_positions;
+  } else if (Array.isArray((chartData as any).planets)) {
+    // ChartData format: planets is an array, convert to dictionary
+    (chartData as any).planets.forEach((p: any) => {
+      planetaryPositions[p.name] = p;
+    });
+  }
+  
+  // Extract house cusps - handle both formats
+  const houseCusps = Array.isArray((chartData as any).house_cusps) 
+    ? (chartData as any).house_cusps 
+    : Array.isArray((chartData as any).houseCusps) 
+    ? (chartData as any).houseCusps 
     : [];
 
   if (!planetaryPositions || houseCusps.length !== 12) {
