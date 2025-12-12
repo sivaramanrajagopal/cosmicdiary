@@ -28,19 +28,7 @@ const RASI_NAMES: Record<number, { english: string; tamil?: string }> = {
   12: { english: 'Pisces', tamil: 'Meenam' },
 };
 
-// Planet symbols (Tamil/Unicode)
-const PLANET_SYMBOLS: Record<string, string> = {
-  'Sun': '☉',
-  'Moon': '☽',
-  'Mars': '♂',
-  'Mercury': '☿',
-  'Jupiter': '♃',
-  'Venus': '♀',
-  'Saturn': '♄',
-  'Rahu': '☊',
-  'Ketu': '☋',
-  'Ascendant': '↑',
-};
+// Planet symbols removed - using PLANET_ABBREVIATIONS instead (same as North Indian chart)
 
 /**
  * Get rashi number from rasi name (1-12)
@@ -151,8 +139,8 @@ export default function SouthIndianChart({ chartData, eventDate, onPlanetClick }
           >
             <div className="flex items-center justify-between gap-1">
               <span className="font-bold">
-                {PLANET_SYMBOLS[planet.name] || PLANET_ABBREVIATIONS[planet.name]}
-                {planet.isRetrograde && <span className="text-blue-600 ml-1">℞</span>}
+                {PLANET_ABBREVIATIONS[planet.name] || planet.name}
+                {planet.isRetrograde && <span className="text-blue-600 ml-1">R</span>}
               </span>
               <span className="text-xs font-mono">
                 {getDegreeDisplay(planet)}
@@ -250,13 +238,13 @@ export default function SouthIndianChart({ chartData, eventDate, onPlanetClick }
 
       {/* Comprehensive Information Sections */}
       <div className="space-y-4">
-        {/* Planet Symbols Legend */}
+        {/* Planet Abbreviations Legend */}
         <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-          <h3 className="font-medium text-sm mb-3 text-center text-gray-800">Planet Symbols</h3>
+          <h3 className="font-medium text-sm mb-3 text-center text-gray-800">Planet Names</h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-            {Object.entries(PLANET_SYMBOLS).map(([name, symbol]) => (
+            {Object.entries(PLANET_ABBREVIATIONS).map(([name, abbreviation]) => (
               <div key={name} className="flex items-center justify-center gap-1">
-                <span className="font-bold text-lg">{symbol}</span>
+                <span className="font-bold">{abbreviation}</span>
                 <span className="text-gray-700">{name}</span>
               </div>
             ))}
@@ -268,15 +256,15 @@ export default function SouthIndianChart({ chartData, eventDate, onPlanetClick }
           <h3 className="font-medium text-sm mb-2 text-purple-800">Retrograde (℞) Explanation</h3>
           <div className="text-xs text-purple-700 leading-relaxed space-y-2">
             <p>
-              <strong>Retrograde</strong> (℞) means the planet appears to move backward in the sky from Earth&apos;s view.
+              <strong>Retrograde</strong> (R) means the planet appears to move backward in the sky from Earth&apos;s view.
               During this period, the planet&apos;s energy is internalized or reversed.
             </p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li><strong>Mercury ℞</strong> can bring communication or travel delays.</li>
-              <li><strong>Saturn ℞</strong> can create karmic tests or delays in structure and discipline.</li>
-              <li><strong>Venus ℞</strong> may cause relationship reassessments or value changes.</li>
-              <li><strong>Jupiter ℞</strong> encourages inner wisdom development and spiritual growth.</li>
-              <li><strong>Mars ℞</strong> redirects energy inward, requiring patience in actions.</li>
+              <li><strong>Mercury R</strong> can bring communication or travel delays.</li>
+              <li><strong>Saturn R</strong> can create karmic tests or delays in structure and discipline.</li>
+              <li><strong>Venus R</strong> may cause relationship reassessments or value changes.</li>
+              <li><strong>Jupiter R</strong> encourages inner wisdom development and spiritual growth.</li>
+              <li><strong>Mars R</strong> redirects energy inward, requiring patience in actions.</li>
             </ul>
             <p className="font-medium">
               Use this phase for <strong>reflection, revision, and deeper learning</strong> in that planet&apos;s domain.
