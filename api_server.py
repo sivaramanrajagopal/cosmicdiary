@@ -514,11 +514,14 @@ def calculate_chart():
 
 
 if __name__ == '__main__':
-    port = int(os.getenv('FLASK_PORT', 8000))
-    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    # Railway sets PORT, fallback to FLASK_PORT or 8000
+    port = int(os.getenv('PORT', os.getenv('FLASK_PORT', 8000)))
+    host = os.getenv('HOST', '0.0.0.0')
+    # Always False in production (Railway/Vercel)
+    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true' and os.getenv('RAILWAY_ENVIRONMENT') is None
     
-    print(f"🚀 Starting Cosmic Diary API Server on port {port}")
+    print(f"🚀 Starting Cosmic Diary API Server on {host}:{port}")
     print(f"📊 Swiss Ephemeris version: {swe.version}")
     print(f"🔮 Using Ayanamsa: Lahiri (SIDM_LAHIRI)")
     
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug)
