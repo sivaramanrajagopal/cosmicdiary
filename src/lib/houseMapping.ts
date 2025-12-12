@@ -281,8 +281,11 @@ export function mapEventToActualHouse(
   // based on the event category, or use the Kalapurushan rasi to find the actual house
   
   // Get the ascendant rasi number
-  const ascRasiNum = chartData.ascendant_rasi_number || 
-    (typeof chartData.ascendant === 'object' ? chartData.ascendant.rasiNumber : 0);
+  // Handle both EventChartData (ascendant_rasi_number) and ChartData (ascendant.rasiNumber) formats
+  const ascRasiNum = (chartData as any).ascendant_rasi_number || 
+    ((chartData as any).ascendant && typeof (chartData as any).ascendant === 'object' 
+      ? (chartData as any).ascendant.rasiNumber 
+      : 0);
   
   if (!ascRasiNum || ascRasiNum < 1 || ascRasiNum > 12) {
     return kalapurushanMapping; // Invalid ascendant, fallback
