@@ -46,6 +46,19 @@ Creates table to store planetary state snapshots captured every 2 hours:
 **Date**: 2025-12-12  
 **Dependencies**: None (standalone table)
 
+### 009_create_event_cosmic_correlations.sql
+Creates junction table linking events with cosmic snapshots for correlation analysis:
+- `event_cosmic_correlations` table with 6 columns
+- Stores correlation scores (0-1) and detailed matching factors (JSONB)
+- Many-to-many relationship between events and snapshots
+- Includes 5 indexes (1 GIN index for JSONB)
+- Auto-updating trigger for total_matches column
+- Includes sample queries for correlation analysis
+
+**Status**: Ready to apply  
+**Date**: 2025-12-12  
+**Dependencies**: Requires migration 008 (cosmic_snapshots table) and events table
+
 ## How to Apply Migrations
 
 ### Method 1: Supabase Dashboard (Recommended)
