@@ -85,7 +85,7 @@ export default function ChartContainer({ chartData, eventId, eventDate }: ChartC
         {chartType === 'north' ? (
           <NorthIndianChart chartData={chartData} />
         ) : (
-          <SouthIndianChart chartData={chartData} />
+          <SouthIndianChart chartData={chartData} eventDate={eventDate} />
         )}
       </div>
 
