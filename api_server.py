@@ -5,11 +5,13 @@ Handles planetary position calculations using Swiss Ephemeris
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime, date
+from datetime import datetime, date, time
 import swisseph as swe
 from typing import List, Dict, Optional
 import os
 from dotenv import load_dotenv
+from astro_calculations import calculate_complete_chart
+from timezonefinder import TimezoneFinder
 
 load_dotenv()
 
@@ -103,7 +105,8 @@ def calculate_planet_position(planet_name: str, jd: float) -> Optional[Dict]:
     # Special handling for Ketu (South Node)
     if planet_name == 'Ketu':
         # Ketu is 180 degrees opposite to Rahu
-        rahu_result = swe.calc_ut(jd, PLANETS['Rahu'], swe.FLG_SWIEPH)
+        # CRITICAL: Use SIDEREAL mode (same as Rahu) to ensure exactly 180° separation
+        rahu_result = swe.calc_ut(jd, PLANETS['Rahu'], swe.FLG_SIDEREAL | swe.FLG_SWIEPH)
         if not rahu_result:
             return None
         
@@ -234,6 +237,240 @@ def calculate_planets():
         return jsonify({'error': f'Invalid date format: {e}'}), 400
     except Exception as e:
         return jsonify({'error': f'Error calculating planetary data: {str(e)}'}), 500
+
+
+@app.route('/api/timezone/detect', methods=['GET'])
+def detect_timezone():
+    """
+    Auto-detect timezone from latitude and longitude
+    
+    Query parameters:
+    - lat: Latitude in degrees (required)
+    - lng: Longitude in degrees (required)
+    
+    Returns timezone string (IANA format)
+    """
+    try:
+        lat_str = request.args.get('lat')
+        lng_str = request.args.get('lng')
+        
+        if not lat_str or not lng_str:
+            return jsonify({
+                'error': 'Missing required parameters',
+                'required': ['lat', 'lng']
+            }), 400
+        
+        try:
+            latitude = float(lat_str)
+            longitude = float(lng_str)
+            
+            if not (-90 <= latitude <= 90):
+                return jsonify({'error': f'Latitude must be between -90 and 90. Got: {latitude}'}), 400
+            
+            if not (-180 <= longitude <= 180):
+                return jsonify({'error': f'Longitude must be between -180 and 180. Got: {longitude}'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Latitude and longitude must be valid numbers'}), 400
+        
+        # Detect timezone
+        tf = TimezoneFinder()
+        timezone_str = tf.timezone_at(lat=latitude, lng=longitude)
+        
+        if not timezone_str:
+            # Fallback to UTC if detection fails
+            timezone_str = 'UTC'
+        
+        return jsonify({
+            'success': True,
+            'latitude': latitude,
+            'longitude': longitude,
+            'timezone': timezone_str
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'error': f'Error detecting timezone: {str(e)}'
+        }), 500
+
+
+@app.route('/api/chart/validate', methods=['GET'])
+def validate_chart():
+    """
+    Health check and validation for chart calculation features
+    
+    Returns:
+    - Swiss Ephemeris version
+    - Available planets
+    - Supported house systems
+    - Ayanamsa setting
+    """
+    try:
+        # Get Swiss Ephemeris version
+        swiss_eph_version = swe.version
+        
+        # Available planets
+        available_planets = list(PLANETS.keys())
+        
+        # Supported house systems
+        house_systems = {
+            'P': 'Placidus',
+            'K': 'Koch',
+            'E': 'Equal',
+            'W': 'Whole Sign',
+            'R': 'Regiomontanus',
+            'C': 'Campanus',
+            'A': 'Alcabitius',
+            'B': 'Alcabitius',
+            'X': 'Axial Rotation',
+            'H': 'Azimuthal',
+            'T': 'Polich/Page',
+            'Y': 'APC houses'
+        }
+        
+        # Current ayanamsa setting
+        current_ayanamsa = 'Lahiri (SIDM_LAHIRI)'
+        
+        # Test calculation capability
+        try:
+            # Test with a sample date/time
+            from datetime import date, time
+            test_chart = calculate_complete_chart(
+                date(2025, 1, 1),
+                time(12, 0),
+                13.0827,
+                80.2707,
+                'Asia/Kolkata'
+            )
+            calculation_status = 'working'
+            test_result = {
+                'ascendant_rasi': test_chart.get('ascendant_rasi'),
+                'planets_calculated': len(test_chart.get('planetary_positions', {}))
+            }
+        except Exception as e:
+            calculation_status = f'error: {str(e)}'
+            test_result = None
+        
+        return jsonify({
+            'success': True,
+            'swiss_ephemeris_version': swiss_eph_version,
+            'available_planets': available_planets,
+            'planet_count': len(available_planets),
+            'supported_house_systems': house_systems,
+            'current_ayanamsa': current_ayanamsa,
+            'current_house_system': 'Placidus',
+            'calculation_status': calculation_status,
+            'test_result': test_result,
+            'features': {
+                'ascendant_calculation': True,
+                'house_cusps': True,
+                'planetary_positions': True,
+                'planetary_strengths': True,
+                'sidereal_mode': True,
+                'timezone_support': True
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'error': f'Error validating chart system: {str(e)}'
+        }), 500
+
+
+@app.route('/api/chart/calculate', methods=['POST'])
+def calculate_chart():
+    """
+    Calculate complete astrological chart for an event
+    
+    Request body:
+    {
+        "date": "2025-12-10",           # Required: Event date (YYYY-MM-DD)
+        "time": "14:30:00",             # Required: Event time (HH:MM:SS)
+        "latitude": 13.0827,            # Required: Latitude in degrees
+        "longitude": 80.2707,           # Required: Longitude in degrees
+        "timezone": "Asia/Kolkata"      # Optional: Timezone (default: UTC)
+    }
+    
+    Returns complete chart data including:
+    - Ascendant (Lagna) information
+    - House cusps
+    - Planetary positions with house placements
+    - Planetary strengths
+    """
+    try:
+        data = request.json
+        
+        if not data:
+            return jsonify({'error': 'Request body is required'}), 400
+        
+        # Required fields
+        date_str = data.get('date')
+        time_str = data.get('time')
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        
+        if not all([date_str, time_str, latitude is not None, longitude is not None]):
+            return jsonify({
+                'error': 'Missing required fields',
+                'required': ['date', 'time', 'latitude', 'longitude'],
+                'optional': ['timezone']
+            }), 400
+        
+        # Parse date
+        try:
+            event_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': f'Invalid date format: {date_str}. Use YYYY-MM-DD'}), 400
+        
+        # Parse time
+        try:
+            time_parts = time_str.split(':')
+            if len(time_parts) == 3:
+                hour, minute, second = map(int, time_parts)
+            elif len(time_parts) == 2:
+                hour, minute = map(int, time_parts)
+                second = 0
+            else:
+                raise ValueError("Invalid time format")
+            event_time = time(hour, minute, second)
+        except (ValueError, IndexError):
+            return jsonify({'error': f'Invalid time format: {time_str}. Use HH:MM:SS or HH:MM'}), 400
+        
+        # Validate coordinates
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+            
+            if not (-90 <= latitude <= 90):
+                return jsonify({'error': f'Latitude must be between -90 and 90. Got: {latitude}'}), 400
+            
+            if not (-180 <= longitude <= 180):
+                return jsonify({'error': f'Longitude must be between -180 and 180. Got: {longitude}'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Latitude and longitude must be valid numbers'}), 400
+        
+        # Get timezone (optional, default to UTC)
+        timezone_str = data.get('timezone', 'UTC')
+        
+        # Calculate complete chart
+        chart_data = calculate_complete_chart(
+            event_date=event_date,
+            event_time=event_time,
+            latitude=latitude,
+            longitude=longitude,
+            timezone_str=timezone_str
+        )
+        
+        return jsonify({
+            'success': True,
+            'chart': chart_data
+        })
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({
+            'error': f'Error calculating chart: {str(e)}'
+        }), 500
 
 
 if __name__ == '__main__':

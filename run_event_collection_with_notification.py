@@ -57,20 +57,39 @@ def fetch_events_via_openai(client: OpenAI, target_date: date) -> List[Dict]:
     """Fetch significant world events using OpenAI"""
     try:
         date_str = target_date.strftime('%B %d, %Y')
-        prompt = f"""List 3-5 significant world events that occurred on {date_str}. 
+        today = date.today()
+        
+        # Adjust prompt based on whether date is in past, present, or future
+        today = date.today()
+        days_ago = (today - target_date).days
+        
+        if target_date > today:
+            # Future date - can't have real events
+            print(f"  ⚠️  Warning: Target date is in the future. OpenAI cannot provide real events.")
+            print(f"     Consider using a past date (e.g., {today - timedelta(days=7)})")
+            return []
+        elif days_ago == 0:
+            date_context = f"{date_str} (today)"
+        elif days_ago <= 7:
+            date_context = f"{date_str} (recent - {days_ago} days ago)"
+        else:
+            date_context = f"{date_str} (historical date - {days_ago} days ago)"
+        
+        prompt = f"""You are an expert at finding significant world events. List 3-5 significant world events that occurred on or around {date_context}.
+
 For each event, provide:
 1. A clear, factual title
 2. A 2-3 sentence description
-3. Category (e.g., Natural Disaster, Political, Economic, Technology, Health, Social, etc.)
+3. Category (e.g., Natural Disaster, Political, Economic, Technology, Health, Social, War, etc.)
 4. Location (City, Country format)
 5. Impact level (low, medium, high, or critical)
 6. Relevant tags (2-4 keywords)
 
-Format as JSON array with this structure:
+Format as a JSON array with this EXACT structure:
 [
   {{
     "title": "Event Title",
-    "description": "Detailed description...",
+    "description": "Detailed description of the event",
     "category": "Category Name",
     "location": "City, Country",
     "impact_level": "medium",
@@ -78,19 +97,36 @@ Format as JSON array with this structure:
   }}
 ]
 
-Only include real, significant events. Be factual and objective."""
+IMPORTANT REQUIREMENTS:
+- If you cannot find events for the exact date, include events from within 1-2 days before or after
+- Include events from any part of the world
+- Be factual and objective
+- Always return a valid JSON array (even if it contains just 1-2 events)
+- Do not return an empty array unless absolutely no events can be found
 
+Return ONLY the JSON array, no markdown, no explanations."""
+
+        print(f"  📝 Requesting events for {date_str}...")
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that provides factual information about world events. Always respond with valid JSON only."},
+                {"role": "system", "content": "You are a helpful assistant that provides factual information about world events. Always respond with valid JSON only, no markdown, no explanation."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=1500
+            max_tokens=2000,
+            response_format={"type": "json_object"} if target_date > today else None
         )
         
         content = response.choices[0].message.content.strip()
+        print(f"  📥 Received response from OpenAI ({len(content)} characters)")
+        
+        # Debug: Show first 200 chars of response
+        if len(content) < 200:
+            print(f"  🔍 Full response: {repr(content)}")
+        else:
+            print(f"  🔍 Response preview: {content[:200]}...")
         
         # Remove markdown code blocks if present
         if content.startswith('```json'):
@@ -101,11 +137,55 @@ Only include real, significant events. Be factual and objective."""
             content = content[:-3]
         content = content.strip()
         
-        events = json.loads(content)
-        return events if isinstance(events, list) else []
+        # If content is empty or just brackets, warn
+        if not content or content == '[]' or content == '{}':
+            print(f"  ⚠️  OpenAI returned empty response. This might mean:")
+            print(f"     - The date is too recent/future (OpenAI knowledge cutoff)")
+            print(f"     - No significant events found for this date")
+            print(f"     - API returned empty result")
+            return []
+        
+        # Try to parse as JSON
+        try:
+            # Handle case where OpenAI might wrap in an object
+            parsed = json.loads(content)
+            
+            # If it's an object, look for common keys
+            if isinstance(parsed, dict):
+                # Check for common keys that might contain the array
+                if 'events' in parsed:
+                    events = parsed['events']
+                elif 'data' in parsed:
+                    events = parsed['data']
+                elif 'results' in parsed:
+                    events = parsed['results']
+                else:
+                    # If it's a single event object, wrap it in array
+                    if 'title' in parsed:
+                        events = [parsed]
+                    else:
+                        print(f"  ⚠️  Response is an object but no recognizable structure: {list(parsed.keys())}")
+                        print(f"  📄 Content preview: {content[:200]}...")
+                        events = []
+            elif isinstance(parsed, list):
+                events = parsed
+            else:
+                print(f"  ⚠️  Unexpected response type: {type(parsed)}")
+                events = []
+            
+            print(f"  ✅ Parsed {len(events)} events from response")
+            return events if isinstance(events, list) else []
+            
+        except json.JSONDecodeError as je:
+            print(f"  ❌ JSON parsing error: {je}")
+            print(f"  📄 Content received: {content[:500]}")
+            return []
     
     except Exception as e:
-        print(f"❌ Error fetching events from OpenAI: {e}")
+        print(f"  ❌ Error fetching events from OpenAI: {e}")
+        print(f"  🔍 Error type: {type(e).__name__}")
+        import traceback
+        print(f"  📋 Traceback: {traceback.format_exc()}")
         return []
 
 def create_event_in_db(supabase: Client, event_data: Dict, target_date: date) -> Optional[Dict]:
@@ -306,8 +386,10 @@ def main():
     
     if not openai_client:
         print("❌ Error: OPENAI_API_KEY not set. Cannot fetch events.")
+        print("   Please set OPENAI_API_KEY in .env.local")
         sys.exit(1)
     
+    print(f"   Using OpenAI API key (length: {len(OPENAI_API_KEY)})")
     events = fetch_events_via_openai(openai_client, target_date)
     
     if not events:

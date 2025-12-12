@@ -21,6 +21,8 @@ openai==1.6.1
 
 # Date/time handling
 python-dateutil==2.8.2
+pytz==2024.1
+timezonefinder==6.2.0
 
 # Type checking (optional but recommended)
 mypy==1.7.1

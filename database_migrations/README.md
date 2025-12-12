@@ -24,6 +24,16 @@ Creates new table to store complete astrological chart data:
 **Date**: 2025-12-11  
 **Dependencies**: Requires migration 001 (time fields on events)
 
+### 003_update_house_mappings.sql
+Updates event_house_mappings table to support ascendant-based calculations:
+- `actual_house_number` (INT) - House from ascendant-based calculation
+- `calculation_method` (TEXT) - 'kalapurushan' or 'ascendant-based'
+- Includes indexes for efficient querying
+
+**Status**: Ready to apply  
+**Date**: 2025-12-12  
+**Dependencies**: Requires existing event_house_mappings table
+
 ## How to Apply Migrations
 
 ### Method 1: Supabase Dashboard (Recommended)
