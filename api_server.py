@@ -557,12 +557,22 @@ def calculate_chart():
         }), 500
 
 
-@app.route('/api/jobs/run-event-collection', methods=['POST'])
+@app.route('/api/jobs/run-event-collection', methods=['POST', 'GET'])
 def run_event_collection_job():
     """
     Trigger event collection job on-demand.
     This runs the collect_events_with_cosmic_state.py script.
+    
+    Accepts both POST (for actual execution) and GET (for testing).
     """
+    # Handle GET requests for testing
+    if request.method == 'GET':
+        return jsonify({
+            'message': 'Event Collection Job Endpoint',
+            'usage': 'POST to this endpoint to trigger the job',
+            'status': 'ready'
+        })
+    
     import subprocess
     import sys
     from pathlib import Path

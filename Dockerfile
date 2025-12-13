@@ -15,9 +15,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 COPY *.py ./
 COPY prompts/ ./prompts/
-COPY astro_calculations.py .
-COPY aspect_calculator.py .
-COPY correlation_analyzer.py .
+# Note: Individual files already copied by *.py, but explicit for clarity
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
