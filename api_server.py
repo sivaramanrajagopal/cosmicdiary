@@ -54,13 +54,31 @@ def internal_error(error):
 
 @app.errorhandler(Exception)
 def handle_exception(e):
-    import traceback
-    return jsonify({
-        'success': False,
-        'error': 'An error occurred',
-        'message': str(e),
-        'traceback': traceback.format_exc() if os.getenv('FLASK_DEBUG') == 'true' else None
-    }), 500
+    """Catch-all exception handler to ensure JSON responses"""
+    try:
+        import traceback
+        error_msg = str(e) if e else 'Unknown error'
+        traceback_msg = None
+        
+        try:
+            if os.getenv('FLASK_DEBUG', '').lower() == 'true':
+                traceback_msg = traceback.format_exc()
+        except:
+            pass  # If traceback fails, just skip it
+        
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred',
+            'message': error_msg,
+            'traceback': traceback_msg
+        }), 500
+    except Exception as handler_error:
+        # If even the error handler fails, return minimal JSON
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred',
+            'message': str(e) if e else 'Unknown error'
+        }), 500
 
 # Swiss Ephemeris settings
 # Lahiri ayanamsa = 1
