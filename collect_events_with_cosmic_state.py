@@ -47,13 +47,26 @@ from correlation_analyzer import (
 
 # Import enhanced prompt system (same as import_automated_events.py)
 sys.path.append(str(SCRIPT_DIR))
-from prompts.event_detection_prompt import (
-    SYSTEM_PROMPT,
-    generate_user_prompt,
-    validate_event_response,
-    calculate_research_score,
-    get_time_window
-)
+try:
+    from prompts.event_detection_prompt import (
+        SYSTEM_PROMPT,
+        generate_user_prompt,
+        validate_event_response,
+        calculate_research_score,
+        get_time_window
+    )
+    PROMPT_SYSTEM_AVAILABLE = True
+    print("✓ Prompt system imported successfully")
+except ImportError as e:
+    print(f"⚠️  WARNING: Could not import prompt system: {e}")
+    print(f"⚠️  Script directory: {SCRIPT_DIR}")
+    print(f"⚠️  Checking if prompts/event_detection_prompt.py exists...")
+    prompts_path = SCRIPT_DIR / 'prompts' / 'event_detection_prompt.py'
+    print(f"⚠️  Prompts file path: {prompts_path}")
+    print(f"⚠️  File exists: {prompts_path.exists()}")
+    PROMPT_SYSTEM_AVAILABLE = False
+    # Raise the error so deployment fails visibly
+    raise ImportError(f"Prompt system is required but could not be imported: {e}")
 
 # Configuration
 REFERENCE_LOCATION = {
@@ -241,6 +254,10 @@ def detect_events_openai() -> List[Dict[str, Any]]:
     print("STEP 2: DETECTING EVENTS VIA OPENAI")
     print("-" * 80)
     
+    if not PROMPT_SYSTEM_AVAILABLE:
+        print("❌ ERROR: Prompt system not available. Cannot proceed with event detection.")
+        raise RuntimeError("Prompt system is required but not available")
+    
     if not openai_client:
         print("⚠️  OpenAI client not initialized. Skipping event detection.")
         return []
@@ -260,6 +277,7 @@ def detect_events_openai() -> List[Dict[str, Any]]:
         print("🤖 Calling OpenAI API with enhanced astrological prompts...")
         print(f"📝 Using SYSTEM_PROMPT from prompts/event_detection_prompt.py")
         print(f"📝 User prompt length: {len(user_prompt)} characters")
+        print(f"📝 SYSTEM_PROMPT length: {len(SYSTEM_PROMPT)} characters")
         
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
