@@ -33,6 +33,7 @@ export default function RootLayout({
                   <a href="/planets" className="hover:text-purple-400 transition-colors">Planets</a>
                   <a href="/analysis" className="hover:text-purple-400 transition-colors">Analysis</a>
                   <a href="/house-analysis" className="hover:text-purple-400 transition-colors">Houses & Aspects</a>
+                  <a href="/jobs" className="hover:text-purple-400 transition-colors">Jobs</a>
                 </div>
               </nav>
           <main>{children}</main>
