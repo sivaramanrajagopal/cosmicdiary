@@ -337,6 +337,23 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
                 events = [events] if events else []
         
         print(f"  ✓ Received {len(events)} events from OpenAI")
+        
+        if len(events) == 0:
+            print("")
+            print("⚠️  WARNING: OpenAI returned 0 events!")
+            print("   Possible reasons:")
+            print("   1. No significant events in the specified time window")
+            print("   2. Prompt may be too restrictive for a short time window")
+            print("   3. OpenAI API may have rate limiting or issues")
+            print("   4. The time window might be too short")
+            print("")
+            print("🔧 SUGGESTIONS:")
+            print("   - Check if there were actually events in the time window")
+            print("   - Try increasing lookback_hours if this is a scheduled run")
+            print("   - Check OpenAI API status and usage limits")
+            print("")
+            return []
+        
         print("")
         
         # Log sample event structure for debugging
@@ -426,12 +443,18 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
                 event['research_score'] = calculate_research_score(event)
                 validated_events.append(event)
                 validation_stats['valid'] += 1
+                print(f"  ✓ Validated: {event.get('title', 'Unknown')[:50]} (Score: {event.get('research_score', 0):.1f})")
             else:
                 validation_stats['invalid'] += 1
                 if reason not in validation_stats['reasons']:
                     validation_stats['reasons'][reason] = 0
                 validation_stats['reasons'][reason] += 1
-                print(f"  ⚠️  Skipping event '{event.get('title', 'Unknown')}': {reason}")
+                print(f"  ⚠️  Skipping event '{event.get('title', 'Unknown')[:60]}': {reason}")
+                
+                # Show more details for debugging
+                print(f"      Category: {event.get('category', 'N/A')}")
+                print(f"      Impact: {event.get('impact_level', 'N/A')}")
+                print(f"      Has astro: {bool(event.get('astrological_relevance'))}")
         
         print(f"✓ Validated: {validation_stats['valid']}/{validation_stats['total']} events")
         if validation_stats['invalid'] > 0:
@@ -444,6 +467,22 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
         
         if not validated_events:
             print("⚠️  No valid events after validation")
+            print("🔍 DEBUGGING: Checking what OpenAI returned...")
+            if events:
+                print(f"   - OpenAI returned {len(events)} events")
+                print("   - Sample of rejected events:")
+                rejected_count = 0
+                for event in events[:3]:  # Show first 3 rejected events
+                    print(f"     {rejected_count + 1}. Title: {event.get('title', 'N/A')[:60]}")
+                    print(f"        Category: {event.get('category', 'N/A')}")
+                    print(f"        Impact: {event.get('impact_level', 'N/A')}")
+                    rejected_count += 1
+            else:
+                print("   - OpenAI returned 0 events (empty response)")
+                print("   - Possible reasons:")
+                print("     * No significant events in the time window")
+                print("     * Prompt too restrictive for short time window")
+                print("     * OpenAI API issue or rate limiting")
             return []
         
         # Sort by research score and take top 15

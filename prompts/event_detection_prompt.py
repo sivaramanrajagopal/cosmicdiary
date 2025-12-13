@@ -309,35 +309,47 @@ def generate_user_prompt(time_window=None):
 
 CRITICAL: Focus ONLY on events that occurred within this specific time window. Do not include events from earlier periods.
 
-PRIORITY 1: SIGNIFICANT GLOBAL/INDIAN EVENTS
-Focus on these high-impact areas:
-1. Natural Disasters: Major earthquakes, floods, cyclones, droughts (affecting 1000+ OR infrastructure damage)
-2. Economic: Stock market movements >2%, GDP/inflation news, banking crises, currency events
-3. Political: Elections, major policies, government crises (state/national level)
-4. Health: Epidemics, disease outbreaks (100+ affected), major medical breakthroughs
-5. Technology: Major launches, AI breakthroughs, space missions, cyber attacks
-6. Business: Fortune 500 mergers/bankruptcies, IPOs >$1B, mass layoffs >500 people
-7. Wars & Conflicts: International/state-level conflicts, attacks, military actions
-8. Employment: Major strikes, labor laws, unemployment data
-9. Women & Children: Major policy changes, large-scale welfare impacts
-10. Entertainment: Deaths of cultural icons, world championships, major awards
+IMPORTANT FOR SHORT TIME WINDOWS ({lookback_hours} hour(s)):
+- Be more lenient with significance thresholds
+- Include regional/state-level events that may not meet global significance
+- Include business news, policy announcements, political developments
+- Include major social issues, environmental news, education announcements
+- If fewer events found, lower the significance threshold appropriately
 
-PRIORITY 2: TOP 10 INDIAN NEWS (FALLBACK)
-If fewer than 5 significant events found, also include:
-- Top 10 news stories from India (any category: politics, economy, society, sports, entertainment)
-- Include state-level and national-level Indian news
+PRIORITY 1: SIGNIFICANT GLOBAL/INDIAN EVENTS
+Focus on these high-impact areas (with adjusted thresholds for {lookback_hours}-hour window):
+1. Natural Disasters: Earthquakes, floods, cyclones, droughts (regional+ impact OR infrastructure damage)
+2. Economic: Stock market movements >1%, GDP/inflation news, banking news, currency events
+3. Political: Elections, major policies, government announcements, policy changes (state/national level)
+4. Health: Disease outbreaks, medical breakthroughs, health policy changes
+5. Technology: Launches, AI news, space missions, cyber attacks, tech policy
+6. Business: Mergers/bankruptcies, IPOs, layoffs, major business news
+7. Wars & Conflicts: Conflicts, attacks, military actions, peace talks
+8. Employment: Strikes, labor laws, employment data, job announcements
+9. Women & Children: Policy changes, welfare impacts, social programs
+10. Entertainment: Deaths of cultural icons, championships, major awards, entertainment industry news
+
+PRIORITY 2: TOP INDIAN NEWS (ALWAYS INCLUDE)
+For {lookback_hours}-hour window, ALWAYS include:
+- Top 10-15 news stories from India (any category: politics, economy, society, sports, entertainment, business)
+- State-level and national-level Indian news
 - News from major Indian states: Tamil Nadu, Karnataka, Maharashtra, Delhi, Gujarat, UP, West Bengal, Bihar, Rajasthan, Telangana, Andhra Pradesh, Kerala, etc.
-- Can include business news, policy announcements, political developments, social issues, etc.
+- Business news, policy announcements, political developments, social issues
+- Regional news of significance within India
 
 GEOGRAPHIC PRIORITY:
 - India: All major states (state-level+ events)
 - Global: G20 countries, international significance
 
-EXCLUSIONS (only for Priority 1, relaxed for Priority 2):
-- Local/district news (unless catastrophic or part of top 10 Indian news)
-- Celebrity gossip (unless death/major cultural impact)
-- Opinion pieces
-- Routine announcements (unless part of top Indian news)
+EXCLUSIONS (minimal - only exclude truly irrelevant):
+- Only exclude: pure celebrity gossip without news value, opinion pieces, routine personal news
+- Include: All significant news, even if regional, as long as it has impact
+
+RETURN REQUIREMENTS:
+- Return AT LEAST 5-10 events, preferably 10-15 events
+- For {lookback_hours}-hour window, be more inclusive rather than exclusive
+- If fewer events found in the time window, include recent news from the last few hours even if slightly outside window
+- Prioritize Indian news if global news is scarce
 
 Return maximum 15 events in JSON format. For each event:
 - Include all required fields (title, date, description, category, location, impact_level)

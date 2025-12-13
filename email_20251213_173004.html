@@ -1,0 +1,360 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+            .section { background: #f9f9f9; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }
+            .event { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .event-title { font-weight: bold; color: #667eea; font-size: 16px; }
+            .event-meta { color: #666; font-size: 12px; margin-top: 5px; }
+            .planet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+            .planet-item { background: white; padding: 10px; border-radius: 5px; text-align: center; }
+            .planet-name { font-weight: bold; color: #667eea; }
+            .planet-position { font-size: 12px; color: #666; }
+            .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+            .stat-box { text-align: center; padding: 15px; background: white; border-radius: 5px; }
+            .stat-number { font-size: 24px; font-weight: bold; color: #667eea; }
+            .stat-label { font-size: 12px; color: #666; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🌟 Cosmic Diary - Daily Summary</h1>
+                <p>Date: 2025-12-13</p>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-number">27</div>
+                    <div class="stat-label">World Events</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Personal Events</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">28</div>
+                    <div class="stat-label">Total Events</div>
+                </div>
+            </div>
+    
+            <div class="section">
+                <h2>🌍 World Events</h2>
+        
+                <div class="event">
+                    <div class="event-title">International Tensions Rise Amid Ongoing Conflict</div>
+                    <div class="event-meta">
+                        Wars & Conflicts • HIGH Impact
+                        • Middle East
+                    </div>
+                    <p style='margin-top: 10px;'>Overnight, military actions escalated in the Middle East, with increased skirmishes reported along contested borders. This has resulted in heightened tensions among nations involved, with diplomatic discussions failing to yield a resolution. International stakeholders are concerned about the potential for a larger conflict, and emergency meetings are being convened to address the situation. The ongoing violence has displaced hundreds of families, raising humanitarian concerns.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Earthquake Hits Northern India, Thousands Affected</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Himachal Pradesh, India
+                    </div>
+                    <p style='margin-top: 10px;'>A powerful earthquake registering 7.2 on the Richter scale struck northern India, particularly affecting Himachal Pradesh in the early hours of December 13, 2025. The quake has resulted in significant infrastructure damage, with reports indicating thousands of people displaced and at least 300 injuries. Emergency services are mobilizing to assess the damage and provide assistance to affected areas. The tremors were felt as far away as Delhi, causing panic and leading to temporary evacuations in high-rise buildings.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Global Stock Markets Plummet Amid Economic Concerns</div>
+                    <div class="event-meta">
+                        Economic Events • HIGH Impact
+                        • Global
+                    </div>
+                    <p style='margin-top: 10px;'>In a significant downturn, global stock markets have experienced a decline of over 2% amid rising economic concerns, particularly regarding inflation and potential recession fears in major economies. The Dow Jones fell by 2.5%, while the FTSE 100 dropped by 2.1%. Analysts suggest that uncertainties in the energy sector and inflationary pressures are driving this trend, affecting millions of investors and businesses worldwide.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Rising COVID-19 Cases Prompt Health Advisory in India</div>
+                    <div class="event-meta">
+                        Health & Medical • MEDIUM Impact
+                        • Maharashtra, India
+                    </div>
+                    <p style='margin-top: 10px;'>Health authorities in Maharashtra have issued a health advisory following a spike in COVID-19 cases, reporting over 150 new infections in the past week. The government is urging residents to adhere to safety protocols and consider vaccination as the winter season approaches. This advisory aims to prevent a potential outbreak and safeguard public health.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">International Climate Summit Underway in New Delhi</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • New Delhi, India
+                    </div>
+                    <p style='margin-top: 10px;'>The International Climate Summit has commenced in New Delhi, gathering leaders from around the world to discuss urgent climate action and policies to combat global warming. This event is expected to influence international agreements and could result in significant policy changes affecting climate strategies globally.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">COVID-19 Outbreak Reported in Several Indian States</div>
+                    <div class="event-meta">
+                        Health & Medical • MEDIUM Impact
+                        • Multiple States, India
+                    </div>
+                    <p style='margin-top: 10px;'>Health officials have reported a resurgence of COVID-19 cases in multiple Indian states, with over 150 confirmed infections in the past week. Authorities are urging citizens to adhere to safety protocols, and vaccination efforts are being ramped up. The surge in cases is concerning as it could lead to renewed restrictions and impact public health systems.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Cyclone Hits Eastern India, Thousands Evacuated</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Odisha, India
+                    </div>
+                    <p style='margin-top: 10px;'>A severe cyclone struck the eastern coast of India, particularly affecting Odisha, leading to the evacuation of over 200,000 residents. Wind speeds reached up to 150 km/h, causing significant infrastructure damage, including downed power lines and destroyed homes. Emergency services are currently engaged in rescue and relief operations. The cyclone is expected to linger over the region for several days, raising concerns about flooding.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Major Policy Shift in Indian Education Sector Announced</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Delhi, India
+                    </div>
+                    <p style='margin-top: 10px;'>The Indian government unveiled a comprehensive reform policy aimed at overhauling the education system, focusing on digital learning and vocational training. This policy seeks to enhance educational outcomes and align them with global standards. The reform is expected to impact millions of students across the country, promoting skill development and employment opportunities.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">International Summit on Climate Change Concludes with New Agreements</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Glasgow, UK
+                    </div>
+                    <p style='margin-top: 10px;'>World leaders concluded a significant climate change summit in Glasgow, resulting in new agreements aimed at reducing carbon emissions by 30% over the next decade. The agreements were signed by representatives from over 150 countries, emphasizing global cooperation in combating climate change. The outcomes of this summit are expected to influence international climate policy and affect millions worldwide.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Stock Market Crash in Major Economies Amid Economic Concerns</div>
+                    <div class="event-meta">
+                        Economic Events • HIGH Impact
+                        • Global
+                    </div>
+                    <p style='margin-top: 10px;'>Global stock markets experienced a sharp decline exceeding 2% as investors reacted to rising inflation rates and fears of a recession. The downturn affected major indices, including the S&P 500 and FTSE 100, resulting in billions of dollars in losses. Analysts attribute this to increasing interest rates and geopolitical tensions, leading to significant market adjustments.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Earthquake Strikes Northern India</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Shimla, Himachal Pradesh, India
+                    </div>
+                    <p style='margin-top: 10px;'>A severe earthquake measuring 6.7 on the Richter scale struck near Shimla in Himachal Pradesh at approximately 02:30 UTC. The quake was felt across northern India, including Delhi and Punjab, affecting thousands of residents. Buildings collapsed, and there were reports of landslides obstructing major roads. Emergency services have been deployed, and rescue operations are ongoing. The earthquake's impact is extensive, with estimates suggesting over 1,000 individuals affected and significant infrastructure damage in the region.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">India's Inflation Rate Rises to 7.5%, Highest in Two Years</div>
+                    <div class="event-meta">
+                        Economic Events • HIGH Impact
+                        • New Delhi, India
+                    </div>
+                    <p style='margin-top: 10px;'>The latest economic report revealed that India's inflation rate surged to 7.5%, marking the highest level in two years. This increase is attributed to rising food prices and supply chain disruptions. The Reserve Bank of India is expected to respond with potential interest rate hikes to combat inflation. The economic impact is significant, affecting consumers and businesses nationwide. Analysts warn that prolonged inflation could have serious implications for the Indian economy and its growth prospects.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Major Political Crisis in Brazil as President Faces Impeachment</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Brasília, Brazil
+                    </div>
+                    <p style='margin-top: 10px;'>Brazil is facing a major political crisis as President João Silva is set to face impeachment proceedings over corruption allegations. The situation has escalated tensions within the government and among the public, leading to protests in major cities. The impeachment vote is expected to take place next week, and if successful, could lead to significant changes in Brazil's political landscape.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Massive Cyber Attack Hits Global Banking Systems</div>
+                    <div class="event-meta">
+                        Technology & Innovation • HIGH Impact
+                        • Global
+                    </div>
+                    <p style='margin-top: 10px;'>A massive cyber attack targeting multiple global banking systems has led to significant disruptions in financial transactions worldwide. Major banks in the United States, Europe, and Asia reported outages, affecting millions of customers. Cybersecurity experts are investigating the source of the attack, which is believed to be state-sponsored. The impact on the banking sector could be severe, with potential economic ramifications.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Major Earthquake Strikes Northern California</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • San Francisco, California, USA
+                    </div>
+                    <p style='margin-top: 10px;'>A powerful earthquake measuring 7.2 struck Northern California at approximately 02:30 UTC, causing significant damage in San Francisco and surrounding areas. Buildings collapsed, and infrastructure was heavily impacted, leading to widespread power outages. Emergency services are responding to rescue trapped individuals and assess the damage. At least 150 individuals have been reported injured, and thousands are without power.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Political Turmoil in Brazil Following Election Results</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Brasília, Brazil
+                    </div>
+                    <p style='margin-top: 10px;'>Brazil is experiencing political turmoil as protests erupt following controversial election results that declared a new president amidst allegations of fraud. Thousands of citizens are taking to the streets demanding transparency and accountability. The situation is escalating, with clashes reported between protesters and police, leading to multiple injuries. The government is under pressure to address the unrest.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Inflation Rates Surge in Eurozone</div>
+                    <div class="event-meta">
+                        Economic Events • HIGH Impact
+                        • Brussels, Belgium
+                    </div>
+                    <p style='margin-top: 10px;'>The Eurozone reported a sharp increase in inflation rates, rising to 6.5% in December 2025, which is above the central bank's target. This has raised concerns among policymakers and markets, leading to a 3% drop in European stock indices. The rise is attributed to higher energy prices and supply chain disruptions. The European Central Bank is expected to respond with potential interest rate hikes in the coming months.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">New COVID-19 Variant Raises Concerns Worldwide</div>
+                    <div class="event-meta">
+                        Health & Medical • HIGH Impact
+                        • Global
+                    </div>
+                    <p style='margin-top: 10px;'>A new variant of COVID-19, designated as variant X, has been identified in multiple countries, raising alarm among health officials. Preliminary data suggests it may be more transmissible than previous strains. Governments are implementing travel restrictions and vaccination campaigns to contain the spread. Initial reports indicate that over 1,000 individuals have been infected across several nations.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Earthquake Strikes Northern India</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Shimla, Himachal Pradesh, India
+                    </div>
+                    <p style='margin-top: 10px;'>A powerful earthquake measuring 6.8 on the Richter scale struck Shimla, Himachal Pradesh, at approximately 02:00 UTC. The tremor was felt across northern India, causing significant damage to buildings and infrastructure. Reports indicate at least 120 people have been injured, and emergency services are currently assessing the damage. The quake has led to widespread panic and disrupted communication lines in the region. As rescue operations are underway, the government has declared a disaster response.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Global Stock Markets Plunge Amid Economic Uncertainty</div>
+                    <div class="event-meta">
+                        Economic Events • CRITICAL Impact
+                        • Global
+                    </div>
+                    <p style='margin-top: 10px;'>Global stock markets have experienced a significant downturn, with major indices falling over 3% in a single trading session. Concerns over rising inflation and potential interest rate hikes have triggered panic selling among investors. The downturn has affected markets across G20 countries, with the US Dow Jones and European FTSE leading the decline. Analysts predict that if the trend continues, it could lead to a broader economic crisis.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Political Turmoil in Brazil Following Failed Presidential Vote</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Brasilia, Brazil
+                    </div>
+                    <p style='margin-top: 10px;'>Brazil is facing political turmoil after a controversial presidential election resulted in widespread allegations of fraud. Protests have erupted across major cities, with thousands of citizens demanding a recount. The government has called for a national dialogue to address the concerns, but tensions remain high. The political instability has raised concerns about future governance and economic policies.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Healthcare Emergency Declared Due to Flu Outbreak in Maharashtra</div>
+                    <div class="event-meta">
+                        Health & Medical • MEDIUM Impact
+                        • Mumbai, Maharashtra, India
+                    </div>
+                    <p style='margin-top: 10px;'>A severe flu outbreak has prompted the government of Maharashtra to declare a healthcare emergency. Over 300 confirmed cases have been reported in Mumbai within the last week, with hospitals overwhelmed and resources stretched. Health officials are urging residents to get vaccinated and practice safety measures to curb the spread. The outbreak has raised concerns about the healthcare system's preparedness for larger epidemics.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Major Political Unrest in Tamil Nadu Following New Education Policy Announcement</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Chennai, Tamil Nadu, India
+                    </div>
+                    <p style='margin-top: 10px;'>Following the announcement of a controversial new education policy in Tamil Nadu, widespread protests erupted across Chennai and other major cities. Protesters argue that the policy undermines local languages and cultures. The state government is facing significant backlash, and the situation is evolving with calls for a re-evaluation of the policy. The protests reportedly involve thousands of citizens and have led to roadblocks and clashes with police.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Earthquake Strikes Northern India, Multiple Casualties Reported</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Himachal Pradesh, India
+                    </div>
+                    <p style='margin-top: 10px;'>A powerful earthquake measuring 6.8 on the Richter scale struck Himachal Pradesh in northern India at approximately 00:30 UTC. The quake was felt across northern India, with reports of significant damage to buildings and infrastructure. Emergency services are currently responding to the affected areas, and initial reports indicate at least 35 fatalities and hundreds of injuries. The Indian government has declared a state of emergency, mobilizing resources for rescue and relief efforts. The impact on local communities is expected to be severe, with thousands displaced from their homes.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">India's Inflation Rate Surges to 9% Amid Economic Turmoil</div>
+                    <div class="event-meta">
+                        Economic Events • HIGH Impact
+                        • New Delhi, India
+                    </div>
+                    <p style='margin-top: 10px;'>The Reserve Bank of India reported that the inflation rate has surged to 9%, driven by rising food and fuel prices. The increase has raised concerns about economic stability and has prompted discussions about potential interest rate hikes. This economic strain affects millions of citizens, particularly those in lower-income brackets, and is expected to influence government spending and policy decisions in the coming months.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">International Summit on Climate Change Convenes in Paris</div>
+                    <div class="event-meta">
+                        Political Events • HIGH Impact
+                        • Paris, France
+                    </div>
+                    <p style='margin-top: 10px;'>World leaders gathered in Paris for a major international summit aimed at addressing the ongoing climate crisis. Key discussions include commitments to reduce carbon emissions and financial support for developing countries. The summit is expected to influence global environmental policy significantly and foster international cooperation on climate action. Thousands of activists are also present to advocate for urgent action against climate change.</p>
+            </div>
+                <div class="event">
+                    <div class="event-title">Severe Flooding in Maharashtra Displaces Thousands</div>
+                    <div class="event-meta">
+                        Natural Disasters • HIGH Impact
+                        • Maharashtra, India
+                    </div>
+                    <p style='margin-top: 10px;'>Heavy monsoon rains have led to severe flooding in several districts of Maharashtra, displacing thousands of residents. The government has initiated rescue operations and is providing temporary shelters for those affected. Initial reports suggest significant infrastructure damage, including roads and bridges, which could take weeks to repair. The total number of affected individuals is estimated to be over 50,000.</p>
+            </div></div>
+            <div class="section">
+                <h2>👤 Personal Events</h2>
+        
+                <div class="event">
+                    <div class="event-title">Cosmic diary live</div>
+                    <div class="event-meta">
+                        Technology • MEDIUM Impact
+                    </div>
+                    <p style='margin-top: 10px;'>made and hosted cosmic diary app</p>
+                </div>
+            </div>
+            <div class="section">
+                <h2>🔮 Planetary Positions</h2>
+                <div class="planet-grid">
+        
+                    <div class="planet-item">
+                        <div class="planet-name">Sun</div>
+                        <div class="planet-position">
+                            Scorpio 236.2°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Moon</div>
+                        <div class="planet-position">
+                            Virgo 159.4°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Mercury</div>
+                        <div class="planet-position">
+                            Scorpio 216.3°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Venus</div>
+                        <div class="planet-position">
+                            Scorpio 230.2°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Mars</div>
+                        <div class="planet-position">
+                            Sagittarius 243.2°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Jupiter</div>
+                        <div class="planet-position">
+                            Gemini 88.5°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Saturn</div>
+                        <div class="planet-position">
+                            Pisces 330.2°
+                            
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Rahu</div>
+                        <div class="planet-position">
+                            Aquarius 318.0°
+                            <br><span style='color: blue;'>Retrograde</span>
+                        </div>
+                    </div>
+            
+                    <div class="planet-item">
+                        <div class="planet-name">Ketu</div>
+                        <div class="planet-position">
+                            Leo 138.0°
+                            <br><span style='color: blue;'>Retrograde</span>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        
+            <div class="section" style="text-align: center; margin-top: 30px;">
+                <p style="color: #666;">Generated by Cosmic Diary - Your Astrological Research Companion</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    
