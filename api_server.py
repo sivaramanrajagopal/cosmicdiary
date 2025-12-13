@@ -526,6 +526,101 @@ def calculate_chart():
         }), 500
 
 
+@app.route('/api/jobs/run-event-collection', methods=['POST'])
+def run_event_collection_job():
+    """
+    Trigger event collection job on-demand.
+    This runs the collect_events_with_cosmic_state.py script.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+    from datetime import timezone
+    
+    try:
+        # Get the script path (relative to api_server.py location)
+        script_dir = Path(__file__).parent.resolve()
+        script_path = script_dir / 'collect_events_with_cosmic_state.py'
+        
+        if not script_path.exists():
+            return jsonify({
+                'success': False,
+                'message': 'Event collection script not found',
+                'error': f'Script not found at: {script_path}'
+            }), 404
+        
+        print(f"🚀 Triggering event collection job: {script_path}")
+        
+        # Run the script
+        result = subprocess.run(
+            [sys.executable, str(script_path)],
+            capture_output=True,
+            text=True,
+            timeout=900,  # 15 minutes timeout
+            cwd=str(script_dir)
+        )
+        
+        # Parse output
+        output = result.stdout
+        error_output = result.stderr
+        
+        # Extract statistics from output
+        events_detected = 0
+        events_stored = 0
+        correlations_created = 0
+        
+        for line in output.split('\n'):
+            if 'Events Detected:' in line:
+                try:
+                    events_detected = int(line.split(':')[-1].strip())
+                except:
+                    pass
+            if 'Events Stored:' in line:
+                try:
+                    events_stored = int(line.split(':')[-1].strip())
+                except:
+                    pass
+            if 'Correlations Created:' in line:
+                try:
+                    correlations_created = int(line.split(':')[-1].strip())
+                except:
+                    pass
+        
+        success = result.returncode == 0
+        
+        return jsonify({
+            'success': success,
+            'message': 'Job completed' if success else 'Job failed',
+            'statistics': {
+                'eventsDetected': events_detected,
+                'eventsStored': events_stored,
+                'correlationsCreated': correlations_created,
+            },
+            'output': output[-5000:] if output else '',  # Last 5000 chars
+            'error': error_output if error_output else None,
+            'returnCode': result.returncode,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'message': 'Job timed out',
+            'error': 'Job execution exceeded 15 minute timeout',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 504
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        return jsonify({
+            'success': False,
+            'message': 'Failed to run event collection job',
+            'error': str(e),
+            'traceback': error_trace,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 500
+
+
 if __name__ == '__main__':
     # Railway sets PORT, fallback to FLASK_PORT or 8000
     port = int(os.getenv('PORT', os.getenv('FLASK_PORT', 8000)))
