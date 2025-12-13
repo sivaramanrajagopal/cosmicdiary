@@ -363,7 +363,7 @@ def validate_event_response(event, lenient=False):
     if desc_len < 50 or desc_len > 800:  # More lenient range
         return False, f"Description length {desc_len} outside range 50-800"
     
-    # Check category validity (normalize OpenAI categories to our categories)
+    # Normalize category BEFORE validation
     # Map OpenAI category variations to our standard categories
     category_mapping = {
         'natural disaster': 'Natural Disasters',
@@ -387,6 +387,7 @@ def validate_event_response(event, lenient=False):
         'war': 'Wars & Conflicts',
         'conflict': 'Wars & Conflicts',
         'wars & conflicts': 'Wars & Conflicts',
+        'wars': 'Wars & Conflicts',
         'employment': 'Employment & Labor',
         'labor': 'Employment & Labor',
         'employment & labor': 'Employment & Labor',
@@ -399,7 +400,10 @@ def validate_event_response(event, lenient=False):
     valid_categories = list(EVENT_CATEGORIES.keys()) + ['Social', 'Cultural', 'Sports', 'Environment', 'Education']
     
     # Normalize category
-    event_category = event['category']
+    event_category = event.get('category', '')
+    if not event_category:
+        return False, "Missing category"
+    
     event_category_lower = event_category.lower().strip()
     
     # Try to map to valid category
@@ -413,7 +417,7 @@ def validate_event_response(event, lenient=False):
         else:
             # Allow any category if lenient, otherwise reject
             if not lenient:
-                return False, f"Invalid category: {event['category']}"
+                return False, f"Invalid category: {event_category}"
     
     # Check impact level
     if event['impact_level'] not in ['low', 'medium', 'high', 'critical']:
