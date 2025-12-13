@@ -33,6 +33,35 @@ else:  # Default: allow all origins (development-friendly)
         'http://127.0.0.1:3000',
     ], supports_credentials=True)  # Enable CORS for Next.js frontend
 
+# Error handlers to ensure JSON responses
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'success': False,
+        'error': 'Endpoint not found',
+        'message': str(error)
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    import traceback
+    return jsonify({
+        'success': False,
+        'error': 'Internal server error',
+        'message': str(error),
+        'traceback': traceback.format_exc() if os.getenv('FLASK_DEBUG') == 'true' else None
+    }), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    return jsonify({
+        'success': False,
+        'error': 'An error occurred',
+        'message': str(e),
+        'traceback': traceback.format_exc() if os.getenv('FLASK_DEBUG') == 'true' else None
+    }), 500
+
 # Swiss Ephemeris settings
 # Lahiri ayanamsa = 1
 AYANAMSA = swe.SIDM_LAHIRI
