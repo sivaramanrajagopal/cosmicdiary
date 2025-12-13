@@ -35,6 +35,15 @@ if env_path.exists():
 from supabase import create_client, Client
 from openai import OpenAI
 
+# Geocoding for location lookup
+try:
+    from geopy.geocoders import Nominatim
+    from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+    GEOCODING_AVAILABLE = True
+except ImportError:
+    GEOCODING_AVAILABLE = False
+    print("⚠️  geopy not available - will skip geocoding")
+
 # Our astrological calculation modules
 from astro_calculations import calculate_complete_chart
 from aspect_calculator import calculate_all_aspects
@@ -533,10 +542,35 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
         
         event_id = result.data[0]['id']
         
-        # Calculate and store chart if time and location available
+        # Try to get coordinates if missing
+        event_lat = event.get('latitude')
+        event_lng = event.get('longitude')
+        
+        if (event_lat is None or event_lng is None) and event.get('location'):
+            print(f"    🔍 Geocoding location: {event.get('location')}")
+            try:
+                if GEOCODING_AVAILABLE:
+                    geolocator = Nominatim(user_agent="cosmic-diary/1.0", timeout=10)
+                    location_obj = geolocator.geocode(event.get('location'))
+                    if location_obj:
+                        event_lat = location_obj.latitude
+                        event_lng = location_obj.longitude
+                        print(f"    ✓ Geocoded: {event_lat:.4f}, {event_lng:.4f}")
+                    else:
+                        print(f"    ⚠️  Could not geocode location")
+            except (GeocoderTimedOut, GeocoderServiceError, Exception) as e:
+                print(f"    ⚠️  Geocoding error: {e}")
+        
+        # Use default coordinates for India if still missing and location mentions India
+        if (event_lat is None or event_lng is None) and event.get('location', '').lower().find('india') != -1:
+            print(f"    📍 Using default India coordinates (Delhi)")
+            event_lat = 28.6139  # Delhi
+            event_lng = 77.2090
+        
+        # Calculate and store chart if time and coordinates available
         if (event.get('event_time') and 
-            event.get('latitude') is not None and 
-            event.get('longitude') is not None):
+            event_lat is not None and 
+            event_lng is not None):
             
             try:
                 # Parse date and time
@@ -555,8 +589,8 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
                 chart_data = calculate_complete_chart(
                     event_date=event_date,
                     event_time=event_time_obj,
-                    latitude=event['latitude'],
-                    longitude=event['longitude'],
+                    latitude=event_lat,
+                    longitude=event_lng,
                     timezone_str=timezone_str
                 )
                 

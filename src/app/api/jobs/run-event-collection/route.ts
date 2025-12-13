@@ -146,10 +146,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Return success response
-    return NextResponse.json({
-      success: data.success || false,
-      message: data.message || 'Job completed',
+    // Return success response - handle both success and failure cases
+    const responseData = {
+      success: data.success !== undefined ? data.success : false,
+      message: data.message || (data.success ? 'Job completed' : 'Job failed'),
       statistics: data.statistics || {
         eventsDetected: 0,
         eventsStored: 0,
@@ -158,6 +158,17 @@ export async function POST(request: NextRequest) {
       output: data.output || '',
       error: data.error || undefined,
       timestamp: data.timestamp || new Date().toISOString(),
+    };
+    
+    // Log for debugging
+    console.log('✅ Job response:', {
+      success: responseData.success,
+      eventsStored: responseData.statistics.eventsStored,
+      correlationsCreated: responseData.statistics.correlationsCreated,
+    });
+    
+    return NextResponse.json(responseData, {
+      status: data.success ? 200 : 500,
     });
     
   } catch (error: any) {
