@@ -5,10 +5,11 @@ Handles planetary position calculations using Swiss Ephemeris
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 import swisseph as swe
 from typing import List, Dict, Optional
 import os
+import sys
 from dotenv import load_dotenv
 from astro_calculations import calculate_complete_chart
 from timezonefinder import TimezoneFinder
@@ -535,7 +536,6 @@ def run_event_collection_job():
     import subprocess
     import sys
     from pathlib import Path
-    from datetime import timezone
     
     try:
         # Get the script path (relative to api_server.py location)
@@ -622,14 +622,26 @@ def run_event_collection_job():
 
 
 if __name__ == '__main__':
-    # Railway sets PORT, fallback to FLASK_PORT or 8000
-    port = int(os.getenv('PORT', os.getenv('FLASK_PORT', 8000)))
-    host = os.getenv('HOST', '0.0.0.0')
-    # Always False in production (Railway/Vercel set RAILWAY_ENVIRONMENT)
-    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true' and os.getenv('RAILWAY_ENVIRONMENT') is None
-    
-    print(f"🚀 Starting Cosmic Diary API Server on {host}:{port}")
-    print(f"📊 Swiss Ephemeris version: {swe.version}")
-    print(f"🔮 Using Ayanamsa: Lahiri (SIDM_LAHIRI)")
-    
-    app.run(host=host, port=port, debug=debug)
+    try:
+        # Railway sets PORT, fallback to FLASK_PORT or 8000
+        port = int(os.getenv('PORT', os.getenv('FLASK_PORT', 8000)))
+        host = os.getenv('HOST', '0.0.0.0')
+        # Always False in production (Railway/Vercel set RAILWAY_ENVIRONMENT)
+        debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true' and os.getenv('RAILWAY_ENVIRONMENT') is None
+        
+        print(f"🚀 Starting Cosmic Diary API Server on {host}:{port}")
+        print(f"📊 Swiss Ephemeris version: {swe.version}")
+        print(f"🔮 Using Ayanamsa: Lahiri (SIDM_LAHIRI)")
+        
+        # Print all registered routes for debugging
+        print(f"📋 Registered routes:")
+        for rule in app.url_map.iter_rules():
+            if 'run-event-collection' in rule.rule or 'health' in rule.rule:
+                print(f"   {rule.rule} [{', '.join(rule.methods - {'HEAD', 'OPTIONS'})}]")
+        
+        app.run(host=host, port=port, debug=debug)
+    except Exception as e:
+        print(f"❌ Fatal error starting server: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
