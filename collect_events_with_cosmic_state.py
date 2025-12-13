@@ -568,14 +568,17 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
             event_lng = 77.2090
         
         # Calculate and store chart if time and coordinates available
-        if (event.get('event_time') and 
+        # Check for both 'time' (from OpenAI) and 'event_time' (already converted)
+        event_time_str = event.get('event_time') or event.get('time')
+        
+        if (event_time_str and 
             event_lat is not None and 
             event_lng is not None):
             
             try:
                 # Parse date and time
                 event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
-                time_parts = event['event_time'].split(':')
+                time_parts = event_time_str.split(':')
                 event_time_obj = time(
                     int(time_parts[0]),
                     int(time_parts[1]) if len(time_parts) > 1 else 0,
@@ -612,7 +615,11 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
                 }
                 
                 # Insert into event_chart_data table
-                supabase.table('event_chart_data').insert(chart_db_data).execute()
+                chart_insert_result = supabase.table('event_chart_data').insert(chart_db_data).execute()
+                if chart_insert_result.data and len(chart_insert_result.data) > 0:
+                    print(f"    ✓ Chart data stored for event {event_id}")
+                else:
+                    print(f"    ⚠️  Chart data insert returned no data (may already exist)")
                 
                 return event_id, chart_data
             
@@ -663,9 +670,16 @@ def correlate_and_store(
         }
         
         # Insert into event_cosmic_correlations table
-        supabase.table('event_cosmic_correlations').insert(correlation_db_data).execute()
+        correlation_insert_result = supabase.table('event_cosmic_correlations').insert(correlation_db_data).execute()
         
-        return True
+        if correlation_insert_result.data and len(correlation_insert_result.data) > 0:
+            print(f"    ✓ Correlation stored (Score: {correlation_db_data['correlation_score']:.2f}, Matches: {correlation_db_data['total_matches']})")
+            return True
+        else:
+            print(f"    ✗ Correlation insert returned no data")
+            if hasattr(correlation_insert_result, 'error') and correlation_insert_result.error:
+                print(f"    ✗ Database error: {correlation_insert_result.error}")
+            return False
     
     except Exception as e:
         print(f"    ✗ Error correlating and storing: {e}")

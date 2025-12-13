@@ -34,9 +34,40 @@ export default function JobsPage() {
         },
       });
 
-      const data = await response.json();
-      setResult(data);
+      // Check if response is OK and is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Invalid response type: ${contentType}. Response: ${text.substring(0, 200)}`);
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError: any) {
+        const text = await response.text();
+        throw new Error(`JSON parse error: ${parseError.message}. Response: ${text.substring(0, 500)}`);
+      }
+
+      // Ensure we have the expected structure
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response structure');
+      }
+
+      setResult({
+        success: data.success !== undefined ? data.success : false,
+        message: data.message || (data.success ? 'Job completed' : 'Job failed'),
+        statistics: data.statistics || {
+          eventsDetected: 0,
+          eventsStored: 0,
+          correlationsCreated: 0,
+        },
+        output: data.output || '',
+        error: data.error || undefined,
+        timestamp: data.timestamp || new Date().toISOString(),
+      });
     } catch (error: any) {
+      console.error('Error running event collection job:', error);
       setResult({
         success: false,
         message: 'Failed to trigger job',
