@@ -11,7 +11,7 @@ interface EventAnalysis {
 }
 
 export default async function HouseAnalysisPage() {
-  const events = await getEvents();
+  const events = await getEvents(); // Already sorted by created_at DESC (latest first)
   
   // Get analysis for all events
   const eventAnalyses: EventAnalysis[] = [];
@@ -30,6 +30,14 @@ export default async function HouseAnalysisPage() {
       });
     }
   }
+  
+  // Explicitly sort by created_at DESC to ensure latest events first
+  // (This adds redundancy but ensures correct order even if DB query changes)
+  eventAnalyses.sort((a, b) => {
+    const dateA = a.event.created_at ? new Date(a.event.created_at).getTime() : 0;
+    const dateB = b.event.created_at ? new Date(b.event.created_at).getTime() : 0;
+    return dateB - dateA; // Latest first (descending)
+  });
   
   // Group by house number
   const eventsByHouse: Record<number, EventAnalysis[]> = {};
@@ -57,7 +65,12 @@ export default async function HouseAnalysisPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">House & Aspect Analysis</h2>
-          <p className="text-slate-400 mt-2">Traditional Vedic Astrology House Mappings and Planetary Aspects</p>
+          <p className="text-slate-400 mt-2">
+            Traditional Vedic Astrology House Mappings and Planetary Aspects
+            <span className="ml-3 text-xs bg-purple-900/50 px-2 py-1 rounded">
+              Latest events first
+            </span>
+          </p>
         </div>
         <Link
           href="/analysis"
@@ -145,6 +158,7 @@ export default async function HouseAnalysisPage() {
                   <th className="text-left py-3 px-4 font-semibold">House</th>
                   <th className="text-left py-3 px-4 font-semibold">Rasi</th>
                   <th className="text-left py-3 px-4 font-semibold">Planetary Aspects</th>
+                  <th className="text-left py-3 px-4 font-semibold">Captured</th>
                   <th className="text-left py-3 px-4 font-semibold">Action</th>
                 </tr>
               </thead>
@@ -204,6 +218,16 @@ export default async function HouseAnalysisPage() {
                         </div>
                       ) : (
                         <span className="text-slate-500">No aspects</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-400">
+                      {event.created_at ? (
+                        <div>
+                          <div>{format(new Date(event.created_at), 'MMM dd, yyyy')}</div>
+                          <div className="text-slate-500">{format(new Date(event.created_at), 'HH:mm')}</div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">-</span>
                       )}
                     </td>
                     <td className="py-3 px-4">

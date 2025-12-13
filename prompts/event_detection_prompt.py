@@ -155,7 +155,7 @@ def get_time_window():
 SYSTEM_PROMPT = """You are an expert event analyst for astrological research, specializing in identifying significant world events that correlate with Vedic planetary positions and house significations.
 
 YOUR ROLE:
-Scan news from the past 3 hours and identify ONLY high-impact, research-worthy events that match specific astrological categories and significance thresholds.
+Scan news from the past 8 hours and identify ONLY high-impact, research-worthy events that match specific astrological categories and significance thresholds.
 
 CRITICAL FILTERING RULES:
 
