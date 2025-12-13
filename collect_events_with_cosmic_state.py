@@ -545,6 +545,7 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
         # Try to get coordinates if missing
         event_lat = event.get('latitude')
         event_lng = event.get('longitude')
+        coordinates_updated = False
         
         if (event_lat is None or event_lng is None) and event.get('location'):
             print(f"    🔍 Geocoding location: {event.get('location')}")
@@ -556,6 +557,7 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
                         event_lat = location_obj.latitude
                         event_lng = location_obj.longitude
                         print(f"    ✓ Geocoded: {event_lat:.4f}, {event_lng:.4f}")
+                        coordinates_updated = True
                     else:
                         print(f"    ⚠️  Could not geocode location")
             except (GeocoderTimedOut, GeocoderServiceError, Exception) as e:
@@ -566,6 +568,22 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
             print(f"    📍 Using default India coordinates (Delhi)")
             event_lat = 28.6139  # Delhi
             event_lng = 77.2090
+            coordinates_updated = True
+        
+        # Update event in database with geocoded coordinates if we got them
+        if coordinates_updated and event_lat is not None and event_lng is not None:
+            try:
+                update_result = supabase.table('events').update({
+                    'latitude': event_lat,
+                    'longitude': event_lng
+                }).eq('id', event_id).execute()
+                
+                if update_result.data:
+                    print(f"    ✓ Updated event with coordinates: {event_lat:.4f}, {event_lng:.4f}")
+                else:
+                    print(f"    ⚠️  Could not update event coordinates in database")
+            except Exception as e:
+                print(f"    ⚠️  Error updating event coordinates: {e}")
         
         # Calculate and store chart if time and coordinates available
         # Check for both 'time' (from OpenAI) and 'event_time' (already converted)
