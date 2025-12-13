@@ -301,11 +301,24 @@ Only include real, significant events. Be factual and objective."""
         print(f"  ✓ Received {len(events)} events from OpenAI")
         print("")
         
+        # Debug: Print first event structure if available
+        if events:
+            print(f"  📋 Sample event structure:")
+            print(f"     {json.dumps(events[0], indent=2)[:200]}...")
+            print("")
+        
         # Validate and filter events
         validated_events = []
+        skipped_count = 0
         for event in events:
             # Basic validation
-            if not event.get('title') or not event.get('date'):
+            if not event.get('title'):
+                print(f"  ⚠️  Skipping event (no title): {event}")
+                skipped_count += 1
+                continue
+            if not event.get('date'):
+                print(f"  ⚠️  Skipping event '{event.get('title')}' (no date)")
+                skipped_count += 1
                 continue
             
             # Ensure required fields
@@ -336,6 +349,7 @@ Only include real, significant events. Be factual and objective."""
         
         print("📊 Event Detection Summary:")
         print(f"   Events from OpenAI: {len(events)}")
+        print(f"   Skipped (invalid): {skipped_count}")
         print(f"   Validated events: {len(validated_events)}")
         print(f"   Selected for processing: {len(selected_events)}")
         
@@ -352,13 +366,16 @@ Only include real, significant events. Be factual and objective."""
     
     except json.JSONDecodeError as e:
         print(f"  ✗ JSON parsing error: {e}")
+        print(f"  📄 Raw response (first 500 chars): {content[:500] if 'content' in locals() else 'N/A'}")
         raise
     except Exception as e:
         print(f"  ✗ Error detecting events: {e}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
-def store_event_with_chart(event: Dict[str, Any]) -> Optional[int]:
+def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Optional[Dict[str, Any]]]:
     """
     Store event in database and calculate its chart if time/location available.
     
@@ -366,7 +383,7 @@ def store_event_with_chart(event: Dict[str, Any]) -> Optional[int]:
         event: Event dictionary with all required fields
     
     Returns:
-        event_id if successful, None otherwise
+        Tuple of (event_id, chart_data) if successful, (None, None) otherwise
     """
     try:
         # Prepare event data for events table
@@ -386,11 +403,17 @@ def store_event_with_chart(event: Dict[str, Any]) -> Optional[int]:
             "has_accurate_time": event.get('has_accurate_time', False)
         }
         
+        print(f"    📝 Attempting to store: {event_data.get('title', 'Unknown')}")
+        print(f"       Date: {event_data.get('date')}, Location: {event_data.get('location')}")
+        
         # Insert into events table
         result = supabase.table('events').insert(event_data).execute()
         
         if not result.data or len(result.data) == 0:
-            return None
+            print(f"    ✗ Database insert returned no data")
+            if hasattr(result, 'error') and result.error:
+                print(f"    ✗ Database error: {result.error}")
+            return None, None
         
         event_id = result.data[0]['id']
         
