@@ -1,13 +1,7 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "outputDirectory": ".next",
-  "regions": ["iad1"],
   "functions": {
-    "src/app/api/**/*.ts": {
-      "maxDuration": 30
+    "src/app/api/jobs/run-event-collection/route.ts": {
+      "maxDuration": 60
     }
   }
 }

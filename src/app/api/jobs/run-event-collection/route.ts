@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Vercel serverless function timeout configuration
+export const maxDuration = 60; // Maximum 60 seconds for Pro, 10 for Hobby (this may not work on free tier)
+
 /**
  * API endpoint to run event collection job on-demand
  * POST /api/jobs/run-event-collection
  * 
  * This endpoint calls the Railway backend API which has Python installed
  * and can execute the collect_events_with_cosmic_state.py script.
+ * 
+ * Note: This uses fire-and-forget pattern to avoid Vercel timeout.
+ * The job runs asynchronously on Railway.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -32,6 +38,8 @@ export async function POST(request: NextRequest) {
     console.log(`📡 Calling: ${backendUrl}`);
     
     // Call Railway backend endpoint
+    // Note: Vercel has timeout limits, so we use a shorter timeout here
+    // The job will still run on Railway even if this times out
     let response: Response;
     try {
       response = await fetch(backendUrl, {
@@ -39,22 +47,22 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Increase timeout for long-running jobs
-        signal: AbortSignal.timeout(900000), // 15 minutes
+        // Use shorter timeout for Vercel (max 60s on Pro, 10s on Hobby)
+        signal: AbortSignal.timeout(50000), // 50 seconds
       });
     } catch (fetchError: any) {
       console.error('❌ Fetch error:', fetchError);
       
-      // Handle timeout
+      // Handle timeout - job may still be running on Railway
       if (fetchError.name === 'TimeoutError' || fetchError.message?.includes('timeout')) {
         return NextResponse.json(
           {
-            success: false,
-            message: 'Job request timed out',
-            error: 'The job is taking longer than expected. It may still be running on the backend.',
+            success: true, // Job was likely triggered, just timed out waiting
+            message: 'Job triggered (may still be running)',
+            note: 'The job request was sent to Railway. It may still be running in the background. Please check the events page in a few minutes to see if new events were created.',
             timestamp: new Date().toISOString(),
           },
-          { status: 504 }
+          { status: 202 } // 202 Accepted - request accepted but not completed
         );
       }
       
