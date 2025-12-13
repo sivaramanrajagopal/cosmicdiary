@@ -204,12 +204,23 @@ export default async function AnalysisPage() {
 
       {/* Detailed Event Analyses */}
       <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-        <h3 className="text-lg font-semibold mb-4">📊 Event Planetary Analysis</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">📊 Event Planetary Analysis</h3>
+          <span className="text-sm text-slate-400">
+            Showing latest {Math.min(analysesArray.length, 20)} of {analysesArray.length} events
+          </span>
+        </div>
         <div className="space-y-6">
-          {analysesArray.slice(0, 10).map((analysis) => (
+          {/* Events are already sorted by created_at DESC from database query */}
+          {analysesArray.slice(0, 20).map((analysis) => (
             <EventAnalysisCard key={analysis.event.id} analysis={analysis} />
           ))}
         </div>
+        {analysesArray.length > 20 && (
+          <div className="mt-4 text-center text-sm text-slate-400">
+            Showing first 20 events. View all events on the <a href="/events" className="text-purple-400 hover:text-purple-300 underline">Events page</a>.
+          </div>
+        )}
       </div>
 
       {/* Basic Statistics */}

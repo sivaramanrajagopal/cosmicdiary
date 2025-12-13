@@ -3,7 +3,8 @@ import { Event, PlanetaryData, EventPlanetaryCorrelation, EventHouseMapping, Eve
 
 export async function getEvents(date?: string): Promise<Event[]> {
   try {
-    let query = supabase.from('events').select('*').order('date', { ascending: false });
+    // Order by created_at DESC to show latest events first (for analysis page)
+    let query = supabase.from('events').select('*').order('created_at', { ascending: false });
     
     if (date) {
       query = query.eq('date', date);
