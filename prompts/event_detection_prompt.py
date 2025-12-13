@@ -351,6 +351,19 @@ RETURN REQUIREMENTS:
 - If fewer events found in the time window, include recent news from the last few hours even if slightly outside window
 - Prioritize Indian news if global news is scarce
 
+CRITICAL: You MUST return valid JSON format. Return a JSON object with an "events" key containing an array of event objects.
+
+Example format:
+{{
+  "events": [
+    {{
+      "title": "Event Title",
+      "date": "YYYY-MM-DD",
+      ...
+    }}
+  ]
+}}
+
 Return maximum 15 events in JSON format. For each event:
 - Include all required fields (title, date, description, category, location, impact_level)
 - For astrological_relevance: Try to map houses and planets based on event nature, even if not explicitly significant

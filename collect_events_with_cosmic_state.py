@@ -298,15 +298,19 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
         print(f"📝 SYSTEM_PROMPT length: {len(SYSTEM_PROMPT)} characters")
         
         try:
+            # For JSON mode, we need to ensure the prompt asks for JSON
+            # Update user prompt to explicitly request JSON format
+            json_user_prompt = user_prompt + "\n\nIMPORTANT: Return ONLY valid JSON. Your response must be a JSON object with an 'events' array."
+            
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": json_user_prompt}
                 ],
                 temperature=0.7,
                 max_tokens=3500,  # Match import_automated_events.py
-                response_format={"type": "json_object"}  # Force JSON response
+                response_format={"type": "json_object"}  # Force JSON response format
             )
         except Exception as api_error:
             print(f"❌ ERROR: OpenAI API call failed: {api_error}")
