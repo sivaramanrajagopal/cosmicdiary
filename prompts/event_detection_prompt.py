@@ -247,6 +247,8 @@ For each event:
   "title": "Concise, factual title (max 100 chars)",
   "date": "YYYY-MM-DD",
   "time": "HH:MM:SS or 'estimated' with approximate time",
+  "timezone": "IANA format (e.g., 'Asia/Kolkata' for India, NOT 'UTC+5:30')",
+  "sources": ["URL1", "URL2", ...],
   "timezone": "timezone name or 'UTC'",
   "location": "City, State/Province, Country",
   "category": "Exact category from: Natural Disaster, Economic Event, Political Event, etc.",

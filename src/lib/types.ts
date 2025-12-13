@@ -30,6 +30,7 @@ export interface Event {
   impact_level: 'low' | 'medium' | 'high' | 'critical';
   event_type: 'world' | 'personal';
   tags: string[];
+  sources?: string[];  // Array of source URLs/news sources
   created_at?: string;
   updated_at?: string;
 }
