@@ -297,22 +297,51 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
         print(f"📝 User prompt length: {len(user_prompt)} characters")
         print(f"📝 SYSTEM_PROMPT length: {len(SYSTEM_PROMPT)} characters")
         
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=3500  # Match import_automated_events.py
-        )
+        try:
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=3500,  # Match import_automated_events.py
+                response_format={"type": "json_object"}  # Force JSON response
+            )
+        except Exception as api_error:
+            print(f"❌ ERROR: OpenAI API call failed: {api_error}")
+            print(f"   Error type: {type(api_error).__name__}")
+            import traceback
+            traceback.print_exc()
+            raise
         
-        content = response.choices[0].message.content.strip()
+        # Check if response has content
+        if not response.choices or len(response.choices) == 0:
+            print("❌ ERROR: OpenAI returned empty choices array")
+            print("   Response structure:", response)
+            return []
         
-        # Debug: Log first 500 chars of response
-        print(f"📥 OpenAI response preview (first 500 chars): {content[:500]}")
+        content = response.choices[0].message.content
+        
+        if not content:
+            print("❌ ERROR: OpenAI returned empty content")
+            print("   Response choices:", response.choices)
+            return []
+        
+        content = content.strip()
+        
+        # Debug: Log response details
+        print(f"📥 OpenAI response received")
+        print(f"   Content length: {len(content)} characters")
+        print(f"   Preview (first 500 chars): {content[:500]}")
+        
+        # Check if content is empty after stripping
+        if not content:
+            print("❌ ERROR: Content is empty after stripping whitespace")
+            return []
         
         # Parse JSON - handle markdown code blocks (same logic as import_automated_events.py)
+        original_content = content
         if content.startswith('```json'):
             content = content[7:]
         if content.startswith('```'):
@@ -321,20 +350,64 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
             content = content[:-3]
         content = content.strip()
         
+        # Check again after removing markdown
+        if not content:
+            print("❌ ERROR: Content is empty after removing markdown code blocks")
+            print(f"   Original content preview: {original_content[:200]}")
+            return []
+        
         try:
             events = json.loads(content)
         except json.JSONDecodeError as e:
-            print(f"⚠️  JSON parsing error at position {e.pos}: {e.msg}")
-            print(f"📄 Content around error: {content[max(0, e.pos-100):e.pos+100]}")
-            raise
+            print(f"❌ JSON parsing error at position {e.pos}: {e.msg}")
+            print(f"📄 Content length: {len(content)}")
+            print(f"📄 Content preview (first 1000 chars): {content[:1000]}")
+            if e.pos and e.pos < len(content):
+                print(f"📄 Content around error position {e.pos}:")
+                start = max(0, e.pos - 200)
+                end = min(len(content), e.pos + 200)
+                print(f"   ...{content[start:e.pos]}>>>ERROR<<<{content[e.pos:end]}...")
+            else:
+                print(f"📄 Full content: {content}")
+            
+            # Try to extract JSON from the response if it's wrapped in text
+            print("🔧 Attempting to extract JSON from response...")
+            import re
+            json_match = re.search(r'\{.*\[.*\]\.*\}', content, re.DOTALL)
+            if json_match:
+                try:
+                    extracted_json = json_match.group(0)
+                    events = json.loads(extracted_json)
+                    print("✓ Successfully extracted JSON from response")
+                except:
+                    print("✗ Failed to extract valid JSON")
+                    return []
+            else:
+                print("✗ No JSON pattern found in response")
+                return []
         
         # Handle different response formats (same as import_automated_events.py)
         if not isinstance(events, list):
             # Sometimes OpenAI wraps in an object
-            if isinstance(events, dict) and 'events' in events:
-                events = events['events']
+            if isinstance(events, dict):
+                # Check common wrapper keys
+                if 'events' in events:
+                    events = events['events']
+                elif 'data' in events:
+                    events = events['data']
+                elif 'results' in events:
+                    events = events['results']
+                else:
+                    # If it's a single event object, wrap it
+                    # Check if it has event-like structure
+                    if 'title' in events or 'date' in events:
+                        events = [events]
+                    else:
+                        print(f"⚠️  WARNING: Unexpected response format. Keys: {list(events.keys())}")
+                        events = []
             else:
-                events = [events] if events else []
+                print(f"⚠️  WARNING: Events is not a list or dict, type: {type(events)}")
+                events = []
         
         print(f"  ✓ Received {len(events)} events from OpenAI")
         
