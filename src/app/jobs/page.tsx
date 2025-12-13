@@ -34,28 +34,48 @@ export default function JobsPage() {
         },
       });
 
-      // Check if response is OK and is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        throw new Error(`Invalid response type: ${contentType}. Response: ${text.substring(0, 200)}`);
-      }
+      // Get response as text first to inspect it
+      const responseText = await response.text();
+      
+      // Log for debugging
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response content-type:', response.headers.get('content-type'));
+      console.log('📥 Response preview (first 300 chars):', responseText.substring(0, 300));
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError: any) {
-        const text = await response.text();
-        throw new Error(`JSON parse error: ${parseError.message}. Response: ${text.substring(0, 500)}`);
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type') || '';
+      let data: any;
+      
+      if (!contentType.includes('application/json')) {
+        // Not JSON - try to parse anyway or use text as error
+        console.warn('⚠️ Response is not JSON, content-type:', contentType);
+        
+        // Try to parse as JSON anyway (sometimes servers don't set content-type correctly)
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          // If parsing fails, create error object from text
+          throw new Error(`Server returned non-JSON response (${contentType}): ${responseText.substring(0, 200)}`);
+        }
+      } else {
+        // Content-type says JSON, parse it
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError: any) {
+          console.error('❌ JSON parse error:', parseError);
+          console.error('❌ Response text:', responseText.substring(0, 500));
+          throw new Error(`Failed to parse JSON response: ${parseError.message}. Response: ${responseText.substring(0, 300)}`);
+        }
       }
 
       // Ensure we have the expected structure
       if (!data || typeof data !== 'object') {
-        throw new Error('Invalid response structure');
+        throw new Error(`Invalid response structure. Got: ${typeof data}`);
       }
 
+      // Handle both success and error responses
       setResult({
-        success: data.success !== undefined ? data.success : false,
+        success: data.success !== undefined ? data.success : (response.ok ? true : false),
         message: data.message || (data.success ? 'Job completed' : 'Job failed'),
         statistics: data.statistics || {
           eventsDetected: 0,
@@ -67,11 +87,22 @@ export default function JobsPage() {
         timestamp: data.timestamp || new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error('Error running event collection job:', error);
+      console.error('❌ Error running event collection job:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Unknown error';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.toString) {
+        errorMessage = error.toString();
+      }
+      
       setResult({
         success: false,
         message: 'Failed to trigger job',
-        error: error.message || 'Unknown error',
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       });
     } finally {
