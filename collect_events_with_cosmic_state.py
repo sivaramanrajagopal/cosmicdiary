@@ -45,6 +45,16 @@ from correlation_analyzer import (
     extract_planet_rasis
 )
 
+# Import enhanced prompt system (same as import_automated_events.py)
+sys.path.append(str(SCRIPT_DIR))
+from prompts.event_detection_prompt import (
+    SYSTEM_PROMPT,
+    generate_user_prompt,
+    validate_event_response,
+    calculate_research_score,
+    get_time_window
+)
+
 # Configuration
 REFERENCE_LOCATION = {
     "name": "Delhi, India",
@@ -231,65 +241,34 @@ def detect_events_openai() -> List[Dict[str, Any]]:
     print("STEP 2: DETECTING EVENTS VIA OPENAI")
     print("-" * 80)
     
+    if not openai_client:
+        print("⚠️  OpenAI client not initialized. Skipping event detection.")
+        return []
+    
     try:
-        # Get today's date for event detection
-        today = date.today()
-        date_str = today.strftime('%B %d, %Y')
+        # Use time window from prompt system (past 3 hours to align with 2-hour job schedule)
+        time_window = get_time_window()
         
-        print(f"📅 Detecting events for: {date_str}")
+        print(f"📅 Detecting events for time window:")
+        print(f"   Start: {time_window['start']} UTC")
+        print(f"   End: {time_window['end']} UTC")
         print("")
         
-        # Generate prompt with better context and historical event examples
-        # Note: If the date is in the future relative to OpenAI's training data, we'll ask for recent past events
-        prompt = f"""You are an expert at identifying significant world events with astrological research value. 
-
-Please list 10-15 significant world events that occurred around {date_str}. If you cannot find events for this exact date, please provide events from the past 2-3 days or the most recent significant events you know about.
-
-IMPORTANT: 
-- Focus on events with clear time and location information
-- Prioritize events that could have astrological significance (major political changes, natural disasters, economic shifts, social movements, conflicts, technological breakthroughs)
-- Include both major headlines and regionally significant events
-
-For each event, provide:
-1. A clear, factual title (required)
-2. A 2-3 sentence description (required)
-3. Category: One of: Natural Disaster, Political, Economic, Technology, Health, Social, War, Cultural, Scientific, Environmental (required)
-4. Location: City, Country format, e.g., "Paris, France" (required)
-5. Impact level: low, medium, high, or critical (required)
-6. Relevant tags: 2-4 keywords (required)
-7. Date: The actual date the event occurred in YYYY-MM-DD format (required)
-8. Time: If known, the time in HH:MM:SS format (optional, use "estimated" if not known)
-9. Latitude/Longitude: Coordinates if you know them, otherwise omit (optional)
-
-Format as a JSON array ONLY (no markdown, no explanation):
-[
-  {{
-    "date": "YYYY-MM-DD",
-    "time": "HH:MM:SS",
-    "title": "Event Title",
-    "description": "Detailed description of what happened...",
-    "category": "Category Name",
-    "location": "City, Country",
-    "latitude": 28.6139,
-    "longitude": 77.2090,
-    "impact_level": "medium",
-    "tags": ["tag1", "tag2"]
-  }}
-]
-
-Return ONLY valid JSON. If you cannot find any events, return an empty array: []"""
+        # Generate user prompt using the prompt system
+        user_prompt = generate_user_prompt(time_window)
         
-        # Call OpenAI API
-        print("🤖 Calling OpenAI API...")
-        print(f"📝 Prompt length: {len(prompt)} characters")
+        print("🤖 Calling OpenAI API with enhanced astrological prompts...")
+        print(f"📝 Using SYSTEM_PROMPT from prompts/event_detection_prompt.py")
+        print(f"📝 User prompt length: {len(user_prompt)} characters")
+        
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a research assistant specializing in world events and news. You always respond with valid JSON arrays only. Never add explanations or markdown formatting outside the JSON."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,
-            max_tokens=4000  # Increased for more events
+            max_tokens=3500  # Match import_automated_events.py
         )
         
         content = response.choices[0].message.content.strip()
@@ -297,24 +276,14 @@ Return ONLY valid JSON. If you cannot find any events, return an empty array: []
         # Debug: Log first 500 chars of response
         print(f"📥 OpenAI response preview (first 500 chars): {content[:500]}")
         
-        # Parse JSON - handle markdown code blocks
+        # Parse JSON - handle markdown code blocks (same logic as import_automated_events.py)
         if content.startswith('```json'):
             content = content[7:]
-        elif content.startswith('```'):
+        if content.startswith('```'):
             content = content[3:]
         if content.endswith('```'):
             content = content[:-3]
         content = content.strip()
-        
-        # Try to find JSON array in the response
-        # Sometimes OpenAI wraps it or adds text
-        if not content.startswith('['):
-            # Try to extract JSON array
-            import re
-            json_match = re.search(r'\[.*\]', content, re.DOTALL)
-            if json_match:
-                content = json_match.group(0)
-                print(f"📋 Extracted JSON array from response")
         
         try:
             events = json.loads(content)
@@ -322,63 +291,74 @@ Return ONLY valid JSON. If you cannot find any events, return an empty array: []
             print(f"⚠️  JSON parsing error at position {e.pos}: {e.msg}")
             print(f"📄 Content around error: {content[max(0, e.pos-100):e.pos+100]}")
             raise
+        
+        # Handle different response formats (same as import_automated_events.py)
         if not isinstance(events, list):
-            events = [events] if events else []
+            # Sometimes OpenAI wraps in an object
+            if isinstance(events, dict) and 'events' in events:
+                events = events['events']
+            else:
+                events = [events] if events else []
         
         print(f"  ✓ Received {len(events)} events from OpenAI")
         print("")
         
-        # Debug: Print first event structure if available
+        # Log sample event structure for debugging
         if events:
-            print(f"  📋 Sample event structure:")
-            print(f"     {json.dumps(events[0], indent=2)[:200]}...")
+            print("📋 Sample event structure from OpenAI:")
+            print(json.dumps(events[0], indent=2)[:500] + "...")
             print("")
         
-        # Validate and filter events
+        # Validate and score events using prompt system validators
+        print("-" * 80)
+        print("STEP 2b: VALIDATING AND SCORING EVENTS")
+        print("-" * 80)
+        
         validated_events = []
-        skipped_count = 0
+        validation_stats = {
+            'total': len(events),
+            'valid': 0,
+            'invalid': 0,
+            'reasons': {}
+        }
+        
         for event in events:
-            # Basic validation
-            if not event.get('title'):
-                print(f"  ⚠️  Skipping event (no title): {event}")
-                skipped_count += 1
-                continue
-            if not event.get('date'):
-                print(f"  ⚠️  Skipping event '{event.get('title')}' (no date)")
-                skipped_count += 1
-                continue
-            
-            # Ensure required fields
-            validated_event = {
-                "date": event.get('date'),
-                "title": event.get('title'),
-                "description": event.get('description', ''),
-                "category": event.get('category', 'Other'),
-                "location": event.get('location', ''),
-                "latitude": event.get('latitude'),
-                "longitude": event.get('longitude'),
-                "impact_level": event.get('impact_level', 'medium'),
-                "event_type": 'world',
-                "tags": event.get('tags', []),
-                "event_time": event.get('time'),
-                "timezone": None,  # Will be detected if coordinates available
-                "has_accurate_time": bool(event.get('time')),
-                "research_score": 0.8  # Default score
-            }
-            
-            validated_events.append(validated_event)
+            is_valid, reason = validate_event_response(event)
+            if is_valid:
+                # Calculate research score using prompt system
+                event['research_score'] = calculate_research_score(event)
+                validated_events.append(event)
+                validation_stats['valid'] += 1
+            else:
+                validation_stats['invalid'] += 1
+                if reason not in validation_stats['reasons']:
+                    validation_stats['reasons'][reason] = 0
+                validation_stats['reasons'][reason] += 1
+                print(f"  ⚠️  Skipping event '{event.get('title', 'Unknown')}': {reason}")
         
-        # Sort by research_score (if available)
+        print(f"✓ Validated: {validation_stats['valid']}/{validation_stats['total']} events")
+        if validation_stats['invalid'] > 0:
+            print(f"✗ Invalid: {validation_stats['invalid']} events")
+            if validation_stats['reasons']:
+                print("  Reasons:")
+                for reason, count in validation_stats['reasons'].items():
+                    print(f"    - {reason}: {count}")
+        print("")
+        
+        if not validated_events:
+            print("⚠️  No valid events after validation")
+            return []
+        
+        # Sort by research score and take top 15
         validated_events.sort(key=lambda x: x.get('research_score', 0), reverse=True)
-        
-        # Take top 15
         selected_events = validated_events[:15]
         
-        print("📊 Event Detection Summary:")
-        print(f"   Events from OpenAI: {len(events)}")
-        print(f"   Skipped (invalid): {skipped_count}")
-        print(f"   Validated events: {len(validated_events)}")
-        print(f"   Selected for processing: {len(selected_events)}")
+        # Calculate statistics
+        if selected_events:
+            scores = [e.get('research_score', 0) for e in selected_events]
+            avg_score = sum(scores) / len(scores)
+            print(f"✓ Average research score: {avg_score:.2f}/100")
+            print(f"✓ Score range: {min(scores):.2f} - {max(scores):.2f}")
         
         # Category breakdown
         categories = {}
@@ -386,6 +366,10 @@ Return ONLY valid JSON. If you cannot find any events, return an empty array: []
             cat = event.get('category', 'Other')
             categories[cat] = categories.get(cat, 0) + 1
         
+        print("📊 Event Detection Summary:")
+        print(f"   Events from OpenAI: {len(events)}")
+        print(f"   Validated events: {len(validated_events)}")
+        print(f"   Selected for processing: {len(selected_events)}")
         print(f"   Categories: {', '.join([f'{k}({v})' for k, v in categories.items()])}")
         print("")
         
@@ -413,7 +397,26 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
         Tuple of (event_id, chart_data) if successful, (None, None) otherwise
     """
     try:
-        # Prepare event data for events table
+        # Extract astrological relevance if available (from prompt system)
+        astro_relevance = event.get('astrological_relevance', {})
+        astrological_metadata = None
+        if astro_relevance:
+            astrological_metadata = {
+                'primary_houses': astro_relevance.get('primary_houses', []),
+                'primary_planets': astro_relevance.get('primary_planets', []),
+                'keywords': astro_relevance.get('keywords', []),
+                'reasoning': astro_relevance.get('reasoning', '')
+            }
+        
+        # Extract impact_metrics (from prompt system)
+        impact_metrics = event.get('impact_metrics', {})
+        
+        # Extract sources (from prompt system)
+        sources = event.get('sources', [])
+        if not isinstance(sources, list):
+            sources = []
+        
+        # Prepare event data for events table (matching import_automated_events.py structure)
         event_data = {
             "date": event.get('date'),
             "title": event.get('title'),
@@ -423,11 +426,17 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
             "latitude": event.get('latitude'),
             "longitude": event.get('longitude'),
             "impact_level": event.get('impact_level', 'medium'),
-            "event_type": event.get('event_type', 'world'),
+            "event_type": 'world',
             "tags": event.get('tags', []),
-            "event_time": event.get('event_time'),
-            "timezone": event.get('timezone'),
-            "has_accurate_time": event.get('has_accurate_time', False)
+            # Enhanced time fields
+            "event_time": event.get('time') if event.get('time') and event.get('time') != 'estimated' else None,
+            "timezone": event.get('timezone', 'UTC'),
+            "has_accurate_time": event.get('time') is not None and event.get('time') != 'estimated',
+            # Enhanced astrological metadata fields (from prompt system)
+            "astrological_metadata": astrological_metadata,
+            "impact_metrics": impact_metrics if impact_metrics else None,
+            "research_score": event.get('research_score'),
+            "sources": sources
         }
         
         print(f"    📝 Attempting to store: {event_data.get('title', 'Unknown')}")
