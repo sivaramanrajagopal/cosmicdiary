@@ -96,11 +96,24 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     sys.exit(1)
 
 if not OPENAI_API_KEY:
-    print("⚠️  Warning: OPENAI_API_KEY not set. Event detection will be skipped.")
-    sys.exit(0)
+    print("❌ ERROR: OPENAI_API_KEY not set. Cannot proceed with event detection.")
+    print("   Please set OPENAI_API_KEY environment variable in Railway settings.")
+    sys.exit(1)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Initialize OpenAI client (will be None if API key is missing, but we check above)
+openai_client = None
+if OPENAI_API_KEY:
+    try:
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        print("✓ OpenAI client initialized successfully")
+    except Exception as e:
+        print(f"❌ ERROR: Failed to initialize OpenAI client: {e}")
+        sys.exit(1)
+else:
+    print("❌ ERROR: OPENAI_API_KEY is empty. Cannot initialize OpenAI client.")
+    sys.exit(1)
 
 
 def print_header():
@@ -272,11 +285,16 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
     
     if not PROMPT_SYSTEM_AVAILABLE:
         print("❌ ERROR: Prompt system not available. Cannot proceed with event detection.")
+        print("   Check that prompts/event_detection_prompt.py exists and is importable")
         raise RuntimeError("Prompt system is required but not available")
     
     if not openai_client:
-        print("⚠️  OpenAI client not initialized. Skipping event detection.")
-        return []
+        print("❌ ERROR: OpenAI client not initialized.")
+        print("   Possible reasons:")
+        print("   - OPENAI_API_KEY environment variable not set")
+        print("   - OpenAI client creation failed")
+        print("   - API key is invalid or expired")
+        raise RuntimeError("OpenAI client not initialized. Cannot proceed with event detection.")
     
     try:
         # Get time window with specified lookback hours
@@ -868,13 +886,35 @@ def main():
     
     try:
         # STEP 1: Capture Cosmic Snapshot
+        print("")
+        print("Starting STEP 1...")
         snapshot_id, snapshot_chart = capture_cosmic_snapshot()
+        print(f"✓ STEP 1 completed. Snapshot ID: {snapshot_id}")
+        print("")
         
         # STEP 2: Detect Events with specified lookback window
-        events_detected = detect_events_openai(lookback_hours=lookback_hours)
+        print("Starting STEP 2...")
+        try:
+            events_detected = detect_events_openai(lookback_hours=lookback_hours)
+            print(f"✓ STEP 2 completed. Events detected: {len(events_detected)}")
+        except Exception as step2_error:
+            print("")
+            print("=" * 80)
+            print("ERROR IN STEP 2: EVENT DETECTION")
+            print("=" * 80)
+            print(f"❌ Fatal error during event detection: {step2_error}")
+            import traceback
+            traceback.print_exc()
+            print("=" * 80)
+            print("")
+            raise
         
         if not events_detected:
             print("⚠️  No events detected. Exiting.")
+            print("   This is normal if:")
+            print("   - No significant events occurred in the time window")
+            print("   - OpenAI returned 0 events (check logs above)")
+            print("   - All events were filtered during validation")
             return
         
         # STEP 3-4: Process Each Event
@@ -936,14 +976,22 @@ def main():
         print("")
         print("✅ Event collection completed successfully!")
         
+    except KeyboardInterrupt:
+        print("")
+        print("⚠️  Job interrupted by user")
+        sys.exit(130)  # Standard exit code for SIGINT
     except Exception as e:
         print("")
         print("=" * 80)
         print("ERROR")
         print("=" * 80)
         print(f"❌ Fatal error: {e}")
+        print(f"   Error type: {type(e).__name__}")
         import traceback
+        print("\nFull traceback:")
         traceback.print_exc()
+        print("=" * 80)
+        print("")
         sys.exit(1)
 
 
