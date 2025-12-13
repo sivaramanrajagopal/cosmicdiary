@@ -4,6 +4,7 @@ Designed for research-grade event collection with planetary correlation
 """
 
 from datetime import datetime, timedelta
+from typing import Dict
 
 # ============================================================================
 # ASTROLOGICAL HOUSE & PLANET SIGNIFICATIONS REFERENCE
