@@ -82,15 +82,39 @@ export async function POST(request: NextRequest) {
       console.log(`📥 Response status: ${response.status}`);
       console.log(`📥 Response body (first 200 chars): ${responseText.substring(0, 200)}`);
       
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        // If JSON parse fails, return the text
+      // Log raw response for debugging
+      console.log(`📥 Raw response (first 1000 chars):`, responseText.substring(0, 1000));
+      
+      // Check if response is HTML or non-JSON
+      const trimmedText = responseText.trim();
+      if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+        // Not JSON - return helpful error
+        console.error('❌ Backend returned non-JSON response:', trimmedText.substring(0, 200));
         return NextResponse.json(
           {
             success: false,
             message: 'Invalid response from backend',
-            error: `Backend returned non-JSON response. Status: ${response.status}. Response: ${responseText.substring(0, 500)}`,
+            error: `Backend returned non-JSON response. Status: ${response.status}. Response type: ${response.headers.get('content-type') || 'unknown'}. Response preview: ${trimmedText.substring(0, 300)}`,
+            rawResponse: trimmedText.substring(0, 500),
+            timestamp: new Date().toISOString(),
+          },
+          { status: 500 }
+        );
+      }
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError: any) {
+        // If JSON parse fails, return the text
+        console.error('❌ JSON parse error:', parseError.message);
+        console.error('❌ Response that failed to parse:', responseText.substring(0, 500));
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Invalid JSON from backend',
+            error: `JSON parse error: ${parseError.message}. Response preview: ${responseText.substring(0, 500)}`,
+            parseError: parseError.message,
+            responsePreview: responseText.substring(0, 500),
             timestamp: new Date().toISOString(),
           },
           { status: 500 }
