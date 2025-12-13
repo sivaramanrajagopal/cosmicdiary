@@ -10,6 +10,3 @@ cmds = []
 [start]
 cmd = "python api_server.py"
 
-[providers]
-providers = ["python"]
-
