@@ -502,6 +502,7 @@ function formatEvent(data: any): Event {
     impact_level: data.impact_level || 'medium',
     event_type: data.event_type || 'world',
     tags: Array.isArray(data.tags) ? data.tags : (data.tags ? JSON.parse(data.tags) : []),
+    sources: Array.isArray(data.sources) ? data.sources : (data.sources ? JSON.parse(data.sources as string) : []),
     created_at: data.created_at,
     updated_at: data.updated_at,
   };
