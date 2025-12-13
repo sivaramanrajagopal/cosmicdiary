@@ -543,27 +543,70 @@ def run_event_collection_job():
         script_dir = Path(__file__).parent.resolve()
         script_path = script_dir / 'collect_events_with_cosmic_state.py'
         
+        # Debug: Log paths
+        print(f"🔍 Script directory: {script_dir}")
+        print(f"🔍 Script path: {script_path}")
+        print(f"🔍 Script exists: {script_path.exists()}")
+        if not script_path.exists():
+            # List files in directory for debugging
+            try:
+                files_in_dir = list(script_dir.glob('*.py'))
+                print(f"🔍 Python files in directory: {[f.name for f in files_in_dir]}")
+            except Exception as e:
+                print(f"🔍 Error listing files: {e}")
+        
         if not script_path.exists():
             return jsonify({
                 'success': False,
                 'message': 'Event collection script not found',
-                'error': f'Script not found at: {script_path}'
+                'error': f'Script not found at: {script_path}',
+                'debug': {
+                    'script_dir': str(script_dir),
+                    'script_path': str(script_path),
+                    'current_dir': str(Path.cwd()),
+                }
             }), 404
         
         print(f"🚀 Triggering event collection job: {script_path}")
+        print(f"🔍 Using Python: {sys.executable}")
+        print(f"🔍 Working directory: {script_dir}")
         
         # Run the script
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True,
-            text=True,
-            timeout=900,  # 15 minutes timeout
-            cwd=str(script_dir)
-        )
+        try:
+            result = subprocess.run(
+                [sys.executable, str(script_path)],
+                capture_output=True,
+                text=True,
+                timeout=900,  # 15 minutes timeout
+                cwd=str(script_dir),
+                env={**os.environ, 'PYTHONUNBUFFERED': '1'}  # Ensure output is unbuffered
+            )
+        except subprocess.TimeoutExpired as e:
+            print(f"❌ Job timed out after 15 minutes")
+            return jsonify({
+                'success': False,
+                'message': 'Job timed out',
+                'error': 'Job execution exceeded 15 minute timeout',
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }), 504
+        except Exception as e:
+            print(f"❌ Error running subprocess: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'message': 'Failed to run event collection job',
+                'error': f'Subprocess error: {str(e)}',
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }), 500
         
         # Parse output
-        output = result.stdout
-        error_output = result.stderr
+        output = result.stdout if result.stdout else ''
+        error_output = result.stderr if result.stderr else ''
+        
+        print(f"📊 Script return code: {result.returncode}")
+        print(f"📊 Output length: {len(output)} chars")
+        print(f"📊 Error length: {len(error_output)} chars")
         
         # Extract statistics from output
         events_detected = 0
@@ -598,18 +641,10 @@ def run_event_collection_job():
                 'correlationsCreated': correlations_created,
             },
             'output': output[-5000:] if output else '',  # Last 5000 chars
-            'error': error_output if error_output else None,
+            'error': error_output[-2000:] if error_output else None,  # Last 2000 chars of errors
             'returnCode': result.returncode,
             'timestamp': datetime.now(timezone.utc).isoformat()
         })
-        
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            'success': False,
-            'message': 'Job timed out',
-            'error': 'Job execution exceeded 15 minute timeout',
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }), 504
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
