@@ -239,62 +239,89 @@ def detect_events_openai() -> List[Dict[str, Any]]:
         print(f"📅 Detecting events for: {date_str}")
         print("")
         
-        # Generate prompt (simplified version - you can enhance this)
-        prompt = f"""List 15-20 significant world events that occurred on or around {date_str} (within ±1-2 days if exact date has no major events).
-        
-For each event, provide:
-1. A clear, factual title
-2. A 2-3 sentence description
-3. Category (e.g., Natural Disaster, Political, Economic, Technology, Health, Social, War, etc.)
-4. Location (City, Country format, e.g., "Paris, France")
-5. Impact level (low, medium, high, or critical)
-6. Relevant tags (2-4 keywords)
-7. The actual date the event occurred (YYYY-MM-DD format)
-8. If known, the time when the event occurred (HH:MM:SS format)
-9. If known, latitude and longitude coordinates
+        # Generate prompt with better context and historical event examples
+        # Note: If the date is in the future relative to OpenAI's training data, we'll ask for recent past events
+        prompt = f"""You are an expert at identifying significant world events with astrological research value. 
 
-Format as JSON array with this structure:
+Please list 10-15 significant world events that occurred around {date_str}. If you cannot find events for this exact date, please provide events from the past 2-3 days or the most recent significant events you know about.
+
+IMPORTANT: 
+- Focus on events with clear time and location information
+- Prioritize events that could have astrological significance (major political changes, natural disasters, economic shifts, social movements, conflicts, technological breakthroughs)
+- Include both major headlines and regionally significant events
+
+For each event, provide:
+1. A clear, factual title (required)
+2. A 2-3 sentence description (required)
+3. Category: One of: Natural Disaster, Political, Economic, Technology, Health, Social, War, Cultural, Scientific, Environmental (required)
+4. Location: City, Country format, e.g., "Paris, France" (required)
+5. Impact level: low, medium, high, or critical (required)
+6. Relevant tags: 2-4 keywords (required)
+7. Date: The actual date the event occurred in YYYY-MM-DD format (required)
+8. Time: If known, the time in HH:MM:SS format (optional, use "estimated" if not known)
+9. Latitude/Longitude: Coordinates if you know them, otherwise omit (optional)
+
+Format as a JSON array ONLY (no markdown, no explanation):
 [
   {{
     "date": "YYYY-MM-DD",
-    "time": "HH:MM:SS",  // Optional
+    "time": "HH:MM:SS",
     "title": "Event Title",
-    "description": "Detailed description...",
+    "description": "Detailed description of what happened...",
     "category": "Category Name",
     "location": "City, Country",
-    "latitude": 28.6139,  // Optional
-    "longitude": 77.2090,  // Optional
+    "latitude": 28.6139,
+    "longitude": 77.2090,
     "impact_level": "medium",
     "tags": ["tag1", "tag2"]
   }}
 ]
 
-Only include real, significant events. Be factual and objective."""
+Return ONLY valid JSON. If you cannot find any events, return an empty array: []"""
         
         # Call OpenAI API
         print("🤖 Calling OpenAI API...")
+        print(f"📝 Prompt length: {len(prompt)} characters")
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that provides factual information about world events. Always respond with valid JSON only."},
+                {"role": "system", "content": "You are a research assistant specializing in world events and news. You always respond with valid JSON arrays only. Never add explanations or markdown formatting outside the JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=2500
+            max_tokens=4000  # Increased for more events
         )
         
         content = response.choices[0].message.content.strip()
         
-        # Parse JSON
+        # Debug: Log first 500 chars of response
+        print(f"📥 OpenAI response preview (first 500 chars): {content[:500]}")
+        
+        # Parse JSON - handle markdown code blocks
         if content.startswith('```json'):
             content = content[7:]
-        if content.startswith('```'):
+        elif content.startswith('```'):
             content = content[3:]
         if content.endswith('```'):
             content = content[:-3]
         content = content.strip()
         
-        events = json.loads(content)
+        # Try to find JSON array in the response
+        # Sometimes OpenAI wraps it or adds text
+        if not content.startswith('['):
+            # Try to extract JSON array
+            import re
+            json_match = re.search(r'\[.*\]', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
+                print(f"📋 Extracted JSON array from response")
+        
+        try:
+            events = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"⚠️  JSON parsing error at position {e.pos}: {e.msg}")
+            print(f"📄 Content around error: {content[max(0, e.pos-100):e.pos+100]}")
+            raise
         if not isinstance(events, list):
             events = [events] if events else []
         
