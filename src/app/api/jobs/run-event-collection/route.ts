@@ -1,72 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 /**
  * API endpoint to run event collection job on-demand
  * POST /api/jobs/run-event-collection
+ * 
+ * This endpoint calls the Railway backend API which has Python installed
+ * and can execute the collect_events_with_cosmic_state.py script.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication/authorization check here
-    // For now, we'll allow it but you should secure this in production
+    // Get Railway backend URL from environment
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:8000';
     
-    // Get the script path (assuming we're in the repository root)
-    const scriptPath = process.cwd() + '/collect_events_with_cosmic_state.py';
+    console.log(`🚀 Triggering event collection job via Railway backend: ${flaskApiUrl}`);
     
-    console.log(`🚀 Starting on-demand event collection job...`);
+    // Call Railway backend endpoint
+    const response = await fetch(`${flaskApiUrl}/api/jobs/run-event-collection`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Increase timeout for long-running jobs
+      signal: AbortSignal.timeout(900000), // 15 minutes
+    });
     
-    // Run the Python script
-    // Note: This runs in the server environment, so it has access to environment variables
-    const { stdout, stderr } = await execAsync(
-      `cd ${process.cwd()} && python3 collect_events_with_cosmic_state.py`,
-      {
-        env: {
-          ...process.env,
-          // Ensure environment variables are passed
-          SUPABASE_URL: process.env.SUPABASE_URL,
-          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-          FLASK_API_URL: process.env.FLASK_API_URL || 'http://localhost:8000',
-        },
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for output
-        timeout: 900000, // 15 minutes timeout
-      }
-    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
     
-    // Parse output to extract statistics
-    const output = stdout;
-    const errorOutput = stderr;
-    
-    // Extract statistics from output
-    const eventsDetectedMatch = output.match(/Events Detected:\s*(\d+)/i);
-    const eventsStoredMatch = output.match(/Events Stored:\s*(\d+)/i);
-    const correlationsMatch = output.match(/Correlations Created:\s*(\d+)/i);
-    
-    const eventsDetected = eventsDetectedMatch ? parseInt(eventsDetectedMatch[1]) : 0;
-    const eventsStored = eventsStoredMatch ? parseInt(eventsStoredMatch[1]) : 0;
-    const correlationsCreated = correlationsMatch ? parseInt(correlationsMatch[1]) : 0;
-    
-    // Check for errors
-    const hasErrors = output.includes('✗') || output.includes('ERROR') || errorOutput.length > 0;
+    const data = await response.json();
     
     return NextResponse.json({
-      success: !hasErrors,
-      message: hasErrors ? 'Job completed with errors' : 'Job completed successfully',
-      statistics: {
-        eventsDetected,
-        eventsStored,
-        correlationsCreated,
+      success: data.success || false,
+      message: data.message || 'Job completed',
+      statistics: data.statistics || {
+        eventsDetected: 0,
+        eventsStored: 0,
+        correlationsCreated: 0,
       },
-      output: output.substring(Math.max(0, output.length - 5000)), // Last 5000 chars
-      error: errorOutput || undefined,
-      timestamp: new Date().toISOString(),
+      output: data.output || '',
+      error: data.error || undefined,
+      timestamp: data.timestamp || new Date().toISOString(),
     });
     
   } catch (error: any) {
     console.error('Error running event collection job:', error);
+    
+    // Handle timeout errors
+    if (error.name === 'TimeoutError' || error.message?.includes('timeout')) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Job request timed out',
+          error: 'The job is taking longer than expected. It may still be running on the backend.',
+          timestamp: new Date().toISOString(),
+        },
+        { status: 504 }
+      );
+    }
+    
+    // Handle network errors
+    if (error.message?.includes('fetch') || error.code === 'ECONNREFUSED') {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Cannot connect to backend',
+          error: `Failed to connect to Railway backend. Please check FLASK_API_URL is set correctly. Error: ${error.message}`,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 503 }
+      );
+    }
     
     return NextResponse.json(
       {
