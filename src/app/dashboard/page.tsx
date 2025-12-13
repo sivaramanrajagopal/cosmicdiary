@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getEvents, getPlanetaryData } from '@/lib/database';
 import { format, subDays } from 'date-fns';
+import PlanetaryImpactVisualization from '@/components/dashboard/PlanetaryImpactVisualization';
 
 /**
  * Simplified Dashboard View
@@ -315,6 +316,11 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Planetary Impact Analysis Section */}
+      <div className="mt-6">
+        <PlanetaryImpactVisualization />
       </div>
     </div>
   );
