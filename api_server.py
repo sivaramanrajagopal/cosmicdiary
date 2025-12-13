@@ -583,19 +583,18 @@ def run_event_collection_job():
     
     Accepts both POST (for actual execution) and GET (for testing).
     """
-    # Handle GET requests for testing
-    if request.method == 'GET':
-        return jsonify({
-            'message': 'Event Collection Job Endpoint',
-            'usage': 'POST to this endpoint to trigger the job',
-            'status': 'ready'
-        })
-    
-    import subprocess
-    import sys
-    from pathlib import Path
-    
     try:
+        # Handle GET requests for testing
+        if request.method == 'GET':
+            return jsonify({
+                'message': 'Event Collection Job Endpoint',
+                'usage': 'POST to this endpoint to trigger the job',
+                'status': 'ready'
+            })
+        
+        import subprocess
+        import sys
+        from pathlib import Path
         # Get the script path (relative to api_server.py location)
         script_dir = Path(__file__).parent.resolve()
         script_path = script_dir / 'collect_events_with_cosmic_state.py'
@@ -704,14 +703,46 @@ def run_event_collection_job():
         })
     except Exception as e:
         import traceback
-        error_trace = traceback.format_exc()
-        return jsonify({
-            'success': False,
-            'message': 'Failed to run event collection job',
-            'error': str(e),
-            'traceback': error_trace,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }), 500
+        try:
+            error_trace = traceback.format_exc()
+        except:
+            error_trace = "Could not generate traceback"
+        
+        try:
+            error_msg = str(e) if e else "Unknown error"
+        except:
+            error_msg = "Error occurred but message could not be converted to string"
+        
+        # Always return JSON, even if there's an error in error handling
+        try:
+            response_data = {
+                'success': False,
+                'message': 'Failed to run event collection job',
+                'error': error_msg,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Only include traceback in debug mode
+            if os.getenv('FLASK_DEBUG', '').lower() == 'true':
+                response_data['traceback'] = error_trace
+            
+            response = jsonify(response_data)
+            response.headers['Content-Type'] = 'application/json'
+            return response, 500
+        except Exception as json_error:
+            # Last resort - if jsonify fails, return minimal JSON string
+            import json
+            try:
+                minimal_json = json.dumps({
+                    'success': False,
+                    'error': 'Internal server error',
+                    'message': error_msg or 'Unknown error',
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                })
+                return (minimal_json, 500, {'Content-Type': 'application/json'})
+            except:
+                # Absolute last resort
+                return ('{"success":false,"error":"Internal server error"}', 500, {'Content-Type': 'application/json'})
 
 
 if __name__ == '__main__':
