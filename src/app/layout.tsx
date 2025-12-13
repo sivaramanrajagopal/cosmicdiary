@@ -28,6 +28,7 @@ export default function RootLayout({
           </header>
               <nav className="mb-8 border-b border-purple-800 pb-4">
                 <div className="flex gap-4">
+                  <a href="/dashboard" className="hover:text-purple-400 transition-colors">Dashboard</a>
                   <a href="/" className="hover:text-purple-400 transition-colors">Home</a>
                   <a href="/events" className="hover:text-purple-400 transition-colors">Events</a>
                   <a href="/planets" className="hover:text-purple-400 transition-colors">Planets</a>
