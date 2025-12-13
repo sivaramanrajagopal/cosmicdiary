@@ -53,7 +53,8 @@ try:
         generate_user_prompt,
         validate_event_response,
         calculate_research_score,
-        get_time_window
+        get_time_window,
+        auto_map_event_to_astrology
     )
     PROMPT_SYSTEM_AVAILABLE = True
     print("✓ Prompt system imported successfully")
@@ -341,7 +342,29 @@ def detect_events_openai() -> List[Dict[str, Any]]:
         }
         
         for event in events:
-            is_valid, reason = validate_event_response(event)
+            # First try strict validation
+            is_valid, reason = validate_event_response(event, lenient=False)
+            
+            # If validation fails but has basic fields, try lenient validation
+            if not is_valid and event.get('title') and event.get('date'):
+                # Try lenient validation (allows missing astrological mapping)
+                is_valid_lenient, reason_lenient = validate_event_response(event, lenient=True)
+                
+                if is_valid_lenient:
+                    # Auto-map astrological relevance if missing
+                    if not event.get('astrological_relevance') or \
+                       not event.get('astrological_relevance', {}).get('primary_houses'):
+                        print(f"  🔮 Auto-mapping astrological relevance for: {event.get('title', 'Unknown')[:50]}")
+                        event['astrological_relevance'] = auto_map_event_to_astrology(event)
+                    
+                    # Calculate research score
+                    event['research_score'] = calculate_research_score(event)
+                    validated_events.append(event)
+                    validation_stats['valid'] += 1
+                    print(f"  ✓ Validated (lenient): {event.get('title', 'Unknown')[:50]}")
+                    continue
+            
+            # Strict validation passed
             if is_valid:
                 # Calculate research score using prompt system
                 event['research_score'] = calculate_research_score(event)

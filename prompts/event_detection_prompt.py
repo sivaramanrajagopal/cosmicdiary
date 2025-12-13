@@ -134,10 +134,11 @@ def get_time_window():
     """
     Returns time window for event search based on run schedule.
     
-    Since job runs every 2 hours, look back 3 hours to ensure overlap.
+    Since job runs every 2 hours, look back 8 hours to get more comprehensive coverage,
+    including top Indian news as fallback.
     """
     now = datetime.utcnow()
-    lookback_hours = 3  # Slight overlap to avoid missing events
+    lookback_hours = 8  # Extended window for better coverage, including Indian news
     start_time = now - timedelta(hours=lookback_hours)
     
     return {
@@ -290,10 +291,11 @@ def generate_user_prompt(time_window=None):
     
     prompt = f"""Scan news sources for significant world events from {time_window['start']} to {time_window['end']} UTC.
 
-FOCUS AREAS:
+PRIORITY 1: SIGNIFICANT GLOBAL/INDIAN EVENTS
+Focus on these high-impact areas:
 1. Natural Disasters: Major earthquakes, floods, cyclones, droughts (affecting 1000+ OR infrastructure damage)
 2. Economic: Stock market movements >2%, GDP/inflation news, banking crises, currency events
-3. Political: Elections, major policies, government crises (state/national level only)
+3. Political: Elections, major policies, government crises (state/national level)
 4. Health: Epidemics, disease outbreaks (100+ affected), major medical breakthroughs
 5. Technology: Major launches, AI breakthroughs, space missions, cyber attacks
 6. Business: Fortune 500 mergers/bankruptcies, IPOs >$1B, mass layoffs >500 people
@@ -302,22 +304,30 @@ FOCUS AREAS:
 9. Women & Children: Major policy changes, large-scale welfare impacts
 10. Entertainment: Deaths of cultural icons, world championships, major awards
 
+PRIORITY 2: TOP 10 INDIAN NEWS (FALLBACK)
+If fewer than 5 significant events found, also include:
+- Top 10 news stories from India (any category: politics, economy, society, sports, entertainment)
+- Include state-level and national-level Indian news
+- News from major Indian states: Tamil Nadu, Karnataka, Maharashtra, Delhi, Gujarat, UP, West Bengal, Bihar, Rajasthan, Telangana, Andhra Pradesh, Kerala, etc.
+- Can include business news, policy announcements, political developments, social issues, etc.
+
 GEOGRAPHIC PRIORITY:
-- India: Tamil Nadu, Karnataka, Maharashtra, Delhi, Gujarat, UP (state-level+ events)
+- India: All major states (state-level+ events)
 - Global: G20 countries, international significance
 
-EXCLUSIONS:
-- Local/district news (unless catastrophic)
-- Celebrity gossip
+EXCLUSIONS (only for Priority 1, relaxed for Priority 2):
+- Local/district news (unless catastrophic or part of top 10 Indian news)
+- Celebrity gossip (unless death/major cultural impact)
 - Opinion pieces
-- Routine announcements
-- Minor crimes
-- Small business news
+- Routine announcements (unless part of top Indian news)
 
-Return maximum 15 events in JSON format with complete astrological mapping.
+Return maximum 15 events in JSON format. For each event:
+- Include all required fields (title, date, description, category, location, impact_level)
+- For astrological_relevance: Try to map houses and planets based on event nature, even if not explicitly significant
+- If exact time unknown, use "estimated" or approximate based on when news broke
 
 Today's date: {current_date}
-Analysis window: Past 3 hours (to align with 2-hour job schedule)
+Analysis window: Past 8 hours (includes top Indian news fallback)
 """
     
     return prompt
@@ -326,16 +336,17 @@ Analysis window: Past 3 hours (to align with 2-hour job schedule)
 # EXAMPLE RESPONSE VALIDATOR
 # ============================================================================
 
-def validate_event_response(event):
+def validate_event_response(event, lenient=False):
     """
     Validates that an event from OpenAI meets quality standards.
     
+    Args:
+        event: Event dictionary to validate
+        lenient: If True, allows missing astrological mapping (will be auto-mapped later)
+    
     Returns: (is_valid: bool, reason: str)
     """
-    required_fields = [
-        'title', 'date', 'category', 'description', 
-        'impact_level', 'astrological_relevance'
-    ]
+    required_fields = ['title', 'date', 'category', 'description', 'impact_level']
     
     # Check required fields
     for field in required_fields:
@@ -343,38 +354,45 @@ def validate_event_response(event):
             return False, f"Missing required field: {field}"
     
     # Check title length
-    if len(event['title']) > 100:
-        return False, "Title too long (>100 chars)"
+    if len(event['title']) > 150:  # Increased from 100
+        return False, "Title too long (>150 chars)"
     
-    # Check description length
+    # Check description length (more lenient for news)
     desc_len = len(event['description'])
-    if desc_len < 150 or desc_len > 500:
-        return False, f"Description length {desc_len} outside range 150-500"
+    if desc_len < 50 or desc_len > 800:  # More lenient range
+        return False, f"Description length {desc_len} outside range 50-800"
     
-    # Check category validity
-    valid_categories = list(EVENT_CATEGORIES.keys())
+    # Check category validity (allow more categories)
+    valid_categories = list(EVENT_CATEGORIES.keys()) + ['Social', 'Cultural', 'Sports', 'Environment', 'Education']
     if event['category'] not in valid_categories:
-        return False, f"Invalid category: {event['category']}"
+        # Allow if it's close to valid categories (case-insensitive)
+        event_category_lower = event['category'].lower()
+        valid_lower = [c.lower() for c in valid_categories]
+        if event_category_lower not in valid_lower:
+            return False, f"Invalid category: {event['category']}"
     
     # Check impact level
     if event['impact_level'] not in ['low', 'medium', 'high', 'critical']:
         return False, f"Invalid impact_level: {event['impact_level']}"
     
-    # Check astrological relevance
+    # Check astrological relevance (lenient mode allows missing)
     astro = event.get('astrological_relevance', {})
-    if not astro.get('primary_houses') or not astro.get('primary_planets'):
-        return False, "Missing astrological house/planet mapping"
+    if not lenient:
+        if not astro.get('primary_houses') or not astro.get('primary_planets'):
+            return False, "Missing astrological house/planet mapping"
     
-    # Validate houses are 1-12
-    houses = astro.get('primary_houses', [])
-    if any(h < 1 or h > 12 for h in houses):
-        return False, "Invalid house number (must be 1-12)"
+    # Validate houses are 1-12 (if provided)
+    if astro.get('primary_houses'):
+        houses = astro.get('primary_houses', [])
+        if any(h < 1 or h > 12 for h in houses):
+            return False, "Invalid house number (must be 1-12)"
     
-    # Validate planets
-    valid_planets = list(PLANET_SIGNIFICATIONS.keys())
-    planets = astro.get('primary_planets', [])
-    if any(p not in valid_planets for p in planets):
-        return False, f"Invalid planet name in: {planets}"
+    # Validate planets (if provided)
+    if astro.get('primary_planets'):
+        valid_planets = list(PLANET_SIGNIFICATIONS.keys())
+        planets = astro.get('primary_planets', [])
+        if any(p not in valid_planets for p in planets):
+            return False, f"Invalid planet name in: {planets}"
     
     return True, "Valid"
 
@@ -435,4 +453,137 @@ def calculate_research_score(event):
     score += min(measurable_count * 3, 10)
     
     return min(score, 100)  # Cap at 100
+
+
+# ============================================================================
+# AUTO-MAPPING FUNCTION FOR EVENTS WITHOUT ASTROLOGICAL MAPPING
+# ============================================================================
+
+def auto_map_event_to_astrology(event: Dict) -> Dict:
+    """
+    Automatically maps an event to astrological houses and planets based on:
+    - Category
+    - Description keywords
+    - Location (India vs global)
+    - Impact level
+    
+    This is used for events that don't have astrological mapping from OpenAI.
+    
+    Returns: Updated event dictionary with astrological_relevance added/mapped
+    """
+    category = event.get('category', '').lower()
+    description = event.get('description', '').lower()
+    title = event.get('title', '').lower()
+    location = event.get('location', '').lower()
+    impact_level = event.get('impact_level', 'medium')
+    
+    # Combine all text for keyword matching
+    all_text = f"{title} {description}".lower()
+    
+    # Default mappings
+    primary_houses = []
+    primary_planets = []
+    keywords = []
+    reasoning = []
+    
+    # Category-based mapping
+    if 'natural disaster' in category or 'disaster' in category:
+        primary_houses.extend([4, 8])  # Land, Sudden events
+        primary_planets.extend(['Mars', 'Saturn', 'Rahu'])
+        keywords.extend(['disaster', 'calamity', 'natural'])
+        reasoning.append("Natural disasters affect land (4th house) and are sudden events (8th house)")
+    
+    if 'economic' in category or 'finance' in category or 'banking' in category:
+        primary_houses.extend([2, 5, 11])  # Wealth, Speculation, Gains
+        primary_planets.extend(['Jupiter', 'Mercury', 'Venus'])
+        keywords.extend(['economy', 'finance', 'money', 'bank'])
+        reasoning.append("Economic events relate to wealth (2nd), speculation (5th), and gains (11th)")
+    
+    if 'political' in category or 'election' in category or 'government' in category:
+        primary_houses.extend([9, 10])  # Law, Government
+        primary_planets.extend(['Sun', 'Jupiter', 'Saturn'])
+        keywords.extend(['politics', 'government', 'election', 'policy'])
+        reasoning.append("Political events relate to law (9th) and government (10th)")
+    
+    if 'health' in category or 'medical' in category or 'disease' in category:
+        primary_houses.extend([6, 8, 12])  # Disease, Calamities, Hospitals
+        primary_planets.extend(['Saturn', 'Rahu', 'Mars'])
+        keywords.extend(['health', 'medical', 'disease', 'epidemic'])
+        reasoning.append("Health events relate to disease (6th), sudden events (8th), and hospitals (12th)")
+    
+    if 'technology' in category or 'tech' in category or 'innovation' in category:
+        primary_houses.extend([3, 5, 11])  # Communication, Intelligence, Mass adoption
+        primary_planets.extend(['Mercury', 'Rahu'])
+        keywords.extend(['technology', 'innovation', 'digital'])
+        reasoning.append("Technology relates to communication (3rd), intelligence (5th), and mass adoption (11th)")
+    
+    if 'business' in category or 'commerce' in category or 'trade' in category:
+        primary_houses.extend([2, 7, 10, 11])  # Wealth, Trade, Career, Gains
+        primary_planets.extend(['Mercury', 'Venus', 'Jupiter'])
+        keywords.extend(['business', 'commerce', 'trade'])
+        reasoning.append("Business relates to wealth (2nd), trade (7th), career (10th), and gains (11th)")
+    
+    if 'war' in category or 'conflict' in category or 'military' in category:
+        primary_houses.extend([6, 7, 8])  # Enemies, Open warfare, Death
+        primary_planets.extend(['Mars', 'Sun', 'Saturn'])
+        keywords.extend(['war', 'conflict', 'military'])
+        reasoning.append("Wars relate to enemies (6th), open warfare (7th), and death (8th)")
+    
+    if 'employment' in category or 'labor' in category or 'job' in category:
+        primary_houses.extend([6, 10])  # Service, Career
+        primary_planets.extend(['Saturn', 'Mercury'])
+        keywords.extend(['employment', 'labor', 'job'])
+        reasoning.append("Employment relates to service (6th) and career (10th)")
+    
+    if 'women' in category or 'children' in category or 'education' in category:
+        primary_houses.extend([5, 7])  # Children, Partnerships
+        primary_planets.extend(['Moon', 'Venus', 'Jupiter'])
+        keywords.extend(['women', 'children', 'education'])
+        reasoning.append("Women/Children events relate to children (5th) and partnerships (7th)")
+    
+    if 'entertainment' in category or 'sports' in category:
+        primary_houses.extend([5, 3])  # Entertainment, Media
+        primary_planets.extend(['Venus', 'Mercury', 'Moon'])
+        keywords.extend(['entertainment', 'sports'])
+        reasoning.append("Entertainment relates to entertainment (5th) and media (3rd)")
+    
+    # Keyword-based additional mapping
+    if 'flood' in all_text or 'cyclone' in all_text or 'rain' in all_text:
+        primary_houses.append(4)  # Water resources
+        primary_planets.append('Moon')
+        keywords.append('water')
+        reasoning.append("Water-related events map to Moon (water) and 4th house (water resources)")
+    
+    if 'earthquake' in all_text or 'volcano' in all_text:
+        primary_houses.append(4)  # Land
+        primary_planets.append('Mars')
+        keywords.append('earth')
+        reasoning.append("Earth-related events map to Mars (fire/earth) and 4th house (land)")
+    
+    if 'india' in location or 'indian' in all_text:
+        keywords.append('india')
+        reasoning.append("Indian event - may have additional regional significance")
+    
+    # Remove duplicates while preserving order
+    primary_houses = list(dict.fromkeys(primary_houses))[:4]  # Max 4 houses
+    primary_planets = list(dict.fromkeys(primary_planets))[:4]  # Max 4 planets
+    
+    # If no mapping found, use general defaults
+    if not primary_houses:
+        primary_houses = [10]  # Default to 10th house (general worldly matters)
+        primary_planets = ['Jupiter']  # Default to Jupiter (general significator)
+        reasoning.append("Default mapping to 10th house (general events) and Jupiter (significator)")
+    
+    # Ensure we have at least one house and planet
+    if not primary_houses:
+        primary_houses = [10]
+    if not primary_planets:
+        primary_planets = ['Jupiter']
+    
+    return {
+        'primary_houses': primary_houses,
+        'primary_planets': primary_planets,
+        'keywords': list(set(keywords))[:10],  # Unique keywords, max 10
+        'reasoning': ' | '.join(reasoning) if reasoning else 'Auto-mapped based on category and keywords'
+    }
 
