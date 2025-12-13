@@ -363,14 +363,57 @@ def validate_event_response(event, lenient=False):
     if desc_len < 50 or desc_len > 800:  # More lenient range
         return False, f"Description length {desc_len} outside range 50-800"
     
-    # Check category validity (allow more categories)
+    # Check category validity (normalize OpenAI categories to our categories)
+    # Map OpenAI category variations to our standard categories
+    category_mapping = {
+        'natural disaster': 'Natural Disasters',
+        'natural disasters': 'Natural Disasters',
+        'economic event': 'Economic Events',
+        'economic events': 'Economic Events',
+        'economic': 'Economic Events',
+        'political event': 'Political Events',
+        'political events': 'Political Events',
+        'political': 'Political Events',
+        'health crisis': 'Health & Medical',
+        'health & medical': 'Health & Medical',
+        'health': 'Health & Medical',
+        'medical': 'Health & Medical',
+        'technology': 'Technology & Innovation',
+        'tech': 'Technology & Innovation',
+        'technology & innovation': 'Technology & Innovation',
+        'business': 'Business & Commerce',
+        'commerce': 'Business & Commerce',
+        'business & commerce': 'Business & Commerce',
+        'war': 'Wars & Conflicts',
+        'conflict': 'Wars & Conflicts',
+        'wars & conflicts': 'Wars & Conflicts',
+        'employment': 'Employment & Labor',
+        'labor': 'Employment & Labor',
+        'employment & labor': 'Employment & Labor',
+        'women & children': 'Women & Children',
+        'entertainment': 'Entertainment & Sports',
+        'sports': 'Entertainment & Sports',
+        'entertainment & sports': 'Entertainment & Sports',
+    }
+    
     valid_categories = list(EVENT_CATEGORIES.keys()) + ['Social', 'Cultural', 'Sports', 'Environment', 'Education']
-    if event['category'] not in valid_categories:
-        # Allow if it's close to valid categories (case-insensitive)
-        event_category_lower = event['category'].lower()
-        valid_lower = [c.lower() for c in valid_categories]
-        if event_category_lower not in valid_lower:
-            return False, f"Invalid category: {event['category']}"
+    
+    # Normalize category
+    event_category = event['category']
+    event_category_lower = event_category.lower().strip()
+    
+    # Try to map to valid category
+    if event_category_lower in category_mapping:
+        event['category'] = category_mapping[event_category_lower]
+    elif event_category not in valid_categories:
+        # Check case-insensitive match
+        valid_lower = {c.lower(): c for c in valid_categories}
+        if event_category_lower in valid_lower:
+            event['category'] = valid_lower[event_category_lower]
+        else:
+            # Allow any category if lenient, otherwise reject
+            if not lenient:
+                return False, f"Invalid category: {event['category']}"
     
     # Check impact level
     if event['impact_level'] not in ['low', 'medium', 'high', 'critical']:

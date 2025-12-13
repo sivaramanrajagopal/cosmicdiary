@@ -342,6 +342,45 @@ def detect_events_openai() -> List[Dict[str, Any]]:
         }
         
         for event in events:
+            # Normalize category first (before validation)
+            # Map OpenAI category variations to our standard categories
+            category_mapping = {
+                'natural disaster': 'Natural Disasters',
+                'natural disasters': 'Natural Disasters',
+                'economic event': 'Economic Events',
+                'economic events': 'Economic Events',
+                'economic': 'Economic Events',
+                'political event': 'Political Events',
+                'political events': 'Political Events',
+                'political': 'Political Events',
+                'health crisis': 'Health & Medical',
+                'health & medical': 'Health & Medical',
+                'health': 'Health & Medical',
+                'medical': 'Health & Medical',
+                'technology': 'Technology & Innovation',
+                'tech': 'Technology & Innovation',
+                'technology & innovation': 'Technology & Innovation',
+                'business': 'Business & Commerce',
+                'commerce': 'Business & Commerce',
+                'business & commerce': 'Business & Commerce',
+                'war': 'Wars & Conflicts',
+                'conflict': 'Wars & Conflicts',
+                'wars & conflicts': 'Wars & Conflicts',
+                'employment': 'Employment & Labor',
+                'labor': 'Employment & Labor',
+                'employment & labor': 'Employment & Labor',
+                'women & children': 'Women & Children',
+                'entertainment': 'Entertainment & Sports',
+                'sports': 'Entertainment & Sports',
+                'entertainment & sports': 'Entertainment & Sports',
+            }
+            
+            if event.get('category'):
+                event_category_lower = event['category'].lower().strip()
+                if event_category_lower in category_mapping:
+                    event['category'] = category_mapping[event_category_lower]
+                    print(f"  🔄 Normalized category: {event.get('category', 'Unknown')}")
+            
             # First try strict validation
             is_valid, reason = validate_event_response(event, lenient=False)
             
