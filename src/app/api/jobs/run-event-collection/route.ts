@@ -37,6 +37,19 @@ export async function POST(request: NextRequest) {
     const backendUrl = `${flaskApiUrl}/api/jobs/run-event-collection`;
     console.log(`📡 Calling: ${backendUrl}`);
     
+    // Get lookback hours from request body (default: 1 hour for on-demand)
+    let requestBody: any = {};
+    try {
+      const body = await request.json().catch(() => ({}));
+      requestBody = body;
+    } catch {
+      // If body is empty or invalid, use defaults
+      requestBody = {};
+    }
+    
+    const lookbackHours = requestBody.lookback_hours || 1; // Default 1 hour for on-demand
+    console.log(`🔍 On-demand job: Using ${lookbackHours} hour(s) lookback window`);
+    
     // Call Railway backend endpoint
     // Note: Vercel has timeout limits (10s free, 60s pro)
     // If job takes longer, we'll handle timeout gracefully
@@ -52,6 +65,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ lookback_hours: lookbackHours }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);

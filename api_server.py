@@ -627,10 +627,32 @@ def run_event_collection_job():
         print(f"🔍 Using Python: {sys.executable}")
         print(f"🔍 Working directory: {script_dir}")
         
-        # Run the script
+        # Get lookback hours from request (default: 1 hour for on-demand)
+        request_data = request.get_json(silent=True) or {}
+        lookback_hours = request_data.get('lookback_hours', 1)  # Default 1 hour for on-demand
+        
+        # Validate lookback hours
+        try:
+            lookback_hours = int(lookback_hours)
+            if lookback_hours < 1 or lookback_hours > 24:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid lookback_hours. Must be between 1 and 24.',
+                    'message': 'lookback_hours must be between 1 and 24 hours'
+                }), 400
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid lookback_hours format. Must be a number.',
+                'message': 'lookback_hours must be a valid integer'
+            }), 400
+        
+        print(f"🔍 On-demand job: Using {lookback_hours} hour(s) lookback window")
+        
+        # Run the script with lookback hours parameter
         try:
             result = subprocess.run(
-                [sys.executable, str(script_path)],
+                [sys.executable, str(script_path), '--lookback-hours', str(lookback_hours)],
                 capture_output=True,
                 text=True,
                 timeout=900,  # 15 minutes timeout

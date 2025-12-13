@@ -131,21 +131,33 @@ GEOGRAPHIC_PRIORITIES = {
 # TIME WINDOWS FOR EVENT DETECTION
 # ============================================================================
 
-def get_time_window():
+def get_time_window(lookback_hours: int = None):
     """
-    Returns time window for event search based on run schedule.
+    Returns time window for event search.
     
-    Since job runs every 2 hours, look back 8 hours to get more comprehensive coverage,
-    including top Indian news as fallback.
+    Args:
+        lookback_hours: Number of hours to look back. Defaults based on context:
+            - None: Uses default (2 hours for GitHub Actions, or from env/arg)
+            - 1: For on-demand manual runs
+            - 2: For scheduled GitHub Actions (every 2 hours)
+    
+    Returns:
+        Dict with 'start', 'end', 'timezone' keys
     """
     now = datetime.utcnow()
-    lookback_hours = 8  # Extended window for better coverage, including Indian news
+    
+    # Default behavior: Check environment variable or use 2 hours
+    if lookback_hours is None:
+        import os
+        lookback_hours = int(os.getenv('EVENT_LOOKBACK_HOURS', '2'))
+    
     start_time = now - timedelta(hours=lookback_hours)
     
     return {
         "start": start_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "timezone": "UTC"
+        "timezone": "UTC",
+        "lookback_hours": lookback_hours
     }
 
 # ============================================================================
@@ -155,7 +167,9 @@ def get_time_window():
 SYSTEM_PROMPT = """You are an expert event analyst for astrological research, specializing in identifying significant world events that correlate with Vedic planetary positions and house significations.
 
 YOUR ROLE:
-Scan news from the past 8 hours and identify ONLY high-impact, research-worthy events that match specific astrological categories and significance thresholds.
+Scan news from the specified time window (provided in the user prompt) and identify ONLY high-impact, research-worthy events that match specific astrological categories and significance thresholds.
+
+IMPORTANT: Pay close attention to the time window specified in the user prompt. Focus on events that occurred within that exact timeframe.
 
 CRITICAL FILTERING RULES:
 
@@ -289,8 +303,11 @@ def generate_user_prompt(time_window=None):
         time_window = get_time_window()
     
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    lookback_hours = time_window.get('lookback_hours', 2)
     
-    prompt = f"""Scan news sources for significant world events from {time_window['start']} to {time_window['end']} UTC.
+    prompt = f"""Scan news sources for significant world events from {time_window['start']} to {time_window['end']} UTC (past {lookback_hours} hour(s)).
+
+CRITICAL: Focus ONLY on events that occurred within this specific time window. Do not include events from earlier periods.
 
 PRIORITY 1: SIGNIFICANT GLOBAL/INDIAN EVENTS
 Focus on these high-impact areas:
@@ -328,7 +345,8 @@ Return maximum 15 events in JSON format. For each event:
 - If exact time unknown, use "estimated" or approximate based on when news broke
 
 Today's date: {current_date}
-Analysis window: Past 8 hours (includes top Indian news fallback)
+Analysis window: Past {lookback_hours} hour(s) (from {time_window['start']} to {time_window['end']} UTC)
+Time window is CRITICAL - only include events from this exact period.
 """
     
     return prompt

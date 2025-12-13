@@ -37,8 +37,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FLASK_API_URL: ${{ secrets.FLASK_API_URL }}
+          EVENT_LOOKBACK_HOURS: '2'  # GitHub Actions: 2 hours (runs every 2 hours)
         run: |
-          python collect_events_with_cosmic_state.py
+          python collect_events_with_cosmic_state.py --lookback-hours 2
         continue-on-error: true
       
       - name: Extract collection statistics

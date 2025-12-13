@@ -251,9 +251,15 @@ def capture_cosmic_snapshot() -> Tuple[int, Dict[str, Any]]:
         raise
 
 
-def detect_events_openai() -> List[Dict[str, Any]]:
+def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
     """
     Detect world events using OpenAI API.
+    
+    Args:
+        lookback_hours: Number of hours to look back for events. 
+                       None = use default (from env or 2 hours)
+                       1 = on-demand manual run
+                       2 = scheduled GitHub Actions
     
     Returns:
         List of validated event dictionaries
@@ -273,10 +279,12 @@ def detect_events_openai() -> List[Dict[str, Any]]:
         return []
     
     try:
-        # Use time window from prompt system (past 3 hours to align with 2-hour job schedule)
-        time_window = get_time_window()
+        # Get time window with specified lookback hours
+        time_window = get_time_window(lookback_hours=lookback_hours)
         
+        lookback_h = time_window.get('lookback_hours', 2)
         print(f"📅 Detecting events for time window:")
+        print(f"   Lookback: {lookback_h} hour(s)")
         print(f"   Start: {time_window['start']} UTC")
         print(f"   End: {time_window['end']} UTC")
         print("")
@@ -705,8 +713,35 @@ def correlate_and_store(
 
 
 def main():
-    """Main execution flow."""
+    """
+    Main execution flow.
+    
+    Command line arguments:
+        --lookback-hours N: Number of hours to look back for events (default: 2)
+                            Use 1 for on-demand manual runs
+                            Use 2 for scheduled GitHub Actions
+    """
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Collect events with cosmic state correlation')
+    parser.add_argument(
+        '--lookback-hours',
+        type=int,
+        default=None,
+        help='Number of hours to look back for events (default: 2, or from EVENT_LOOKBACK_HOURS env var)'
+    )
+    args = parser.parse_args()
+    
+    # Determine lookback hours
+    lookback_hours = args.lookback_hours
+    if lookback_hours is None:
+        # Check environment variable
+        lookback_hours = int(os.getenv('EVENT_LOOKBACK_HOURS', '2'))
+    
     print_header()
+    print(f"🔍 Event Detection Mode: {lookback_hours} hour(s) lookback")
+    print("")
     
     snapshot_id = None
     snapshot_chart = None
@@ -719,8 +754,8 @@ def main():
         # STEP 1: Capture Cosmic Snapshot
         snapshot_id, snapshot_chart = capture_cosmic_snapshot()
         
-        # STEP 2: Detect Events
-        events_detected = detect_events_openai()
+        # STEP 2: Detect Events with specified lookback window
+        events_detected = detect_events_openai(lookback_hours=lookback_hours)
         
         if not events_detected:
             print("⚠️  No events detected. Exiting.")
