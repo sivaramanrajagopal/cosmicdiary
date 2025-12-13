@@ -54,6 +54,80 @@ from correlation_analyzer import (
     extract_planet_rasis
 )
 
+# Timezone utilities - define inline since it's simple
+def normalize_timezone(timezone_str: str, latitude: float = None, longitude: float = None) -> str:
+    """
+    Normalize timezone string to IANA format.
+    Converts offsets like "UTC+5:30" to "Asia/Kolkata"
+    """
+    if not timezone_str:
+        # Try to detect from coordinates if available
+        if latitude is not None and longitude is not None:
+            try:
+                from timezonefinder import TimezoneFinder
+                tf = TimezoneFinder()
+                detected = tf.timezone_at(lat=latitude, lng=longitude)
+                if detected:
+                    return detected
+            except Exception:
+                pass
+        return 'UTC'
+    
+    timezone_str = timezone_str.strip()
+    
+    # If already in IANA format, return as-is
+    if '/' in timezone_str and not timezone_str.startswith('UTC'):
+        return timezone_str
+    
+    # Common mappings
+    mappings = {
+        'UTC+5:30': 'Asia/Kolkata',
+        'IST': 'Asia/Kolkata',
+        '+05:30': 'Asia/Kolkata',
+        'UTC+1': 'Europe/London',
+        'UTC+2': 'Europe/Berlin',
+        'UTC+5': 'Asia/Karachi',
+        'UTC+6': 'Asia/Dhaka',
+        'UTC+8': 'Asia/Shanghai',
+        'UTC+9': 'Asia/Tokyo',
+        'UTC-5': 'America/New_York',
+        'UTC-8': 'America/Los_Angeles',
+    }
+    
+    # Try exact match
+    if timezone_str in mappings:
+        return mappings[timezone_str]
+    
+    # Try case-insensitive
+    for offset, iana_tz in mappings.items():
+        if offset.upper() == timezone_str.upper():
+            return iana_tz
+    
+    # Try to parse UTC offset format
+    import re
+    offset_pattern = r'UTC([+-])(\d{1,2}):?(\d{2})?'
+    match = re.match(offset_pattern, timezone_str, re.IGNORECASE)
+    if match:
+        sign = match.group(1)
+        hours = int(match.group(2))
+        minutes = int(match.group(3) or '0')
+        if sign == '+' and hours == 5 and minutes == 30:
+            return 'Asia/Kolkata'
+        return 'UTC'  # Default for unknown offsets
+    
+    # Try timezonefinder if coordinates available
+    if latitude is not None and longitude is not None:
+        try:
+            from timezonefinder import TimezoneFinder
+            tf = TimezoneFinder()
+            detected = tf.timezone_at(lat=latitude, lng=longitude)
+            if detected:
+                return detected
+        except Exception:
+            pass
+    
+    return 'UTC'  # Default fallback
+
 # Import enhanced prompt system (same as import_automated_events.py)
 sys.path.append(str(SCRIPT_DIR))
 try:
@@ -647,6 +721,14 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
         if not isinstance(sources, list):
             sources = []
         
+        # Normalize timezone before storing
+        raw_timezone = event.get('timezone') or 'UTC'
+        normalized_timezone = normalize_timezone(
+            raw_timezone,
+            latitude=event.get('latitude'),
+            longitude=event.get('longitude')
+        )
+        
         # Prepare event data for events table (matching import_automated_events.py structure)
         event_data = {
             "date": event.get('date'),
@@ -659,15 +741,15 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
             "impact_level": event.get('impact_level', 'medium'),
             "event_type": 'world',
             "tags": event.get('tags', []),
-            # Enhanced time fields
+            # Enhanced time fields (with normalized timezone)
             "event_time": event.get('time') if event.get('time') and event.get('time') != 'estimated' else None,
-            "timezone": event.get('timezone', 'UTC'),
+            "timezone": normalized_timezone,  # Use normalized timezone
             "has_accurate_time": event.get('time') is not None and event.get('time') != 'estimated',
             # Enhanced astrological metadata fields (from prompt system)
             "astrological_metadata": astrological_metadata,
             "impact_metrics": impact_metrics if impact_metrics else None,
             "research_score": event.get('research_score'),
-            "sources": sources
+            "sources": sources  # Store source URLs
         }
         
         print(f"    📝 Attempting to store: {event_data.get('title', 'Unknown')}")
@@ -745,8 +827,23 @@ def store_event_with_chart(event: Dict[str, Any]) -> Tuple[Optional[int], Option
                     int(time_parts[2]) if len(time_parts) > 2 else 0
                 )
                 
-                # Get timezone (default to UTC if not set)
-                timezone_str = event.get('timezone') or 'UTC'
+                # Normalize timezone (convert UTC+5:30 to Asia/Kolkata, etc.)
+                # Get timezone from stored event data (already normalized) or raw event
+                stored_timezone = result.data[0].get('timezone') if result.data else None
+                raw_timezone = event.get('timezone') or stored_timezone or 'UTC'
+                timezone_str = normalize_timezone(
+                    raw_timezone, 
+                    latitude=event_lat, 
+                    longitude=event_lng
+                )
+                if raw_timezone != timezone_str and raw_timezone != stored_timezone:
+                    print(f"    🔄 Normalized timezone: {raw_timezone} → {timezone_str}")
+                    
+                    # Update timezone in database
+                    try:
+                        supabase.table('events').update({'timezone': timezone_str}).eq('id', event_id).execute()
+                    except Exception as e:
+                        print(f"    ⚠️  Could not update timezone: {e}")
                 
                 # Calculate chart
                 chart_data = calculate_complete_chart(

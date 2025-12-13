@@ -368,6 +368,13 @@ Return maximum 15 events in JSON format. For each event:
 - Include all required fields (title, date, description, category, location, impact_level)
 - For astrological_relevance: Try to map houses and planets based on event nature, even if not explicitly significant
 - If exact time unknown, use "estimated" or approximate based on when news broke
+- TIMEZONE: Use IANA format (e.g., "Asia/Kolkata" for India, not "UTC+5:30"). If unsure, use country/location-based timezone
+- SOURCES: Include a "sources" array with URLs to news articles/reports where you found this event. Example: ["https://example.com/news/article1", "https://example.com/news/article2"]. If no URLs available, include at least the news source name.
+
+CRITICAL TIMEZONE RULES:
+- For India: Use "Asia/Kolkata" (NOT "UTC+5:30" or "IST")
+- For other countries: Use proper IANA timezone (e.g., "America/New_York", "Europe/London")
+- Use timezonefinder or standard timezone names, NOT offset formats like "UTC+X:XX"
 
 Today's date: {current_date}
 Analysis window: Past {lookback_hours} hour(s) (from {time_window['start']} to {time_window['end']} UTC)
