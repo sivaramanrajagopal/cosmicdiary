@@ -23,10 +23,11 @@ allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
 if allowed_origins and allowed_origins[0]:  # If specific origins provided
     CORS(app, origins=allowed_origins)
 else:  # Default: allow all origins (development-friendly)
-    # Allow Vercel deployment and local development
+    # Allow Vercel deployment, Railway frontend, and local development
     CORS(app, origins=[
         'https://cosmicdiary.vercel.app',
         'https://*.vercel.app',  # All Vercel preview deployments
+        'https://web-production-946b5.up.railway.app',  # Railway production URL
         'http://localhost:3000',
         'http://localhost:3001',
         'http://127.0.0.1:3000',

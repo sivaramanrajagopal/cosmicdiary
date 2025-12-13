@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           message: 'Backend URL not configured',
-          error: 'FLASK_API_URL environment variable is not set in Vercel. Please set it to your Railway backend URL (e.g., https://cosmicdiary-production.up.railway.app)',
+          error: 'FLASK_API_URL environment variable is not set in Vercel. Please set it to your Railway backend URL (e.g., https://web-production-946b5.up.railway.app)',
           timestamp: new Date().toISOString(),
         },
         { status: 500 }

@@ -91,7 +91,7 @@ Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment V
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-FLASK_API_URL=https://your-app.up.railway.app
+FLASK_API_URL=https://web-production-946b5.up.railway.app
 ```
 
 **Important**: 
@@ -279,7 +279,7 @@ export async function GET(request: NextRequest) {
 
 **Vercel Environment Variable:**
 ```
-FLASK_API_URL=https://your-app.up.railway.app
+FLASK_API_URL=https://web-production-946b5.up.railway.app
 ```
 
 ### Option 2: Direct Browser Calls (Alternative)
@@ -288,7 +288,7 @@ If you want to call Railway directly from browser:
 
 1. **Add to Vercel:**
    ```
-   NEXT_PUBLIC_FLASK_API_URL=https://your-app.up.railway.app
+   NEXT_PUBLIC_FLASK_API_URL=https://web-production-946b5.up.railway.app
    ```
 
 2. **Update CORS in Railway:**
@@ -409,7 +409,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci... (anon key)
 
 # Required - Server-side only
-FLASK_API_URL=https://your-app.up.railway.app
+FLASK_API_URL=https://web-production-946b5.up.railway.app
 
 # Optional - For email notifications (if enabled)
 SMTP_SERVER=smtp.gmail.com
