@@ -38,31 +38,57 @@ export async function POST(request: NextRequest) {
     console.log(`📡 Calling: ${backendUrl}`);
     
     // Call Railway backend endpoint
-    // Note: Vercel has timeout limits, so we use a shorter timeout here
-    // The job will still run on Railway even if this times out
+    // Note: Vercel has timeout limits (10s free, 60s pro)
+    // If job takes longer, we'll handle timeout gracefully
     let response: Response;
     try {
-      response = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Use shorter timeout for Vercel (max 60s on Pro, 10s on Hobby)
-        signal: AbortSignal.timeout(50000), // 50 seconds
-      });
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 50000); // 50 seconds
+      
+      try {
+        response = await fetch(backendUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Check if it's an abort (timeout)
+        if (fetchError.name === 'AbortError' || controller.signal.aborted) {
+          // Job request was sent, but we timed out waiting for response
+          // The job may still be running on Railway
+          console.warn('⚠️ Request timed out, but job may still be running on Railway');
+          return NextResponse.json(
+            {
+              success: true,
+              message: 'Job triggered (running in background)',
+              note: 'The job request was sent to Railway. Due to timeout limits, we cannot wait for completion. Please check the events page in 2-3 minutes to see if new events were created.',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 202 } // 202 Accepted
+          );
+        }
+        throw fetchError; // Re-throw if not a timeout
+      }
     } catch (fetchError: any) {
       console.error('❌ Fetch error:', fetchError);
       
-      // Handle timeout - job may still be running on Railway
-      if (fetchError.name === 'TimeoutError' || fetchError.message?.includes('timeout')) {
+      // Handle network/connection errors
+      if (fetchError.name === 'AbortError') {
+        // Already handled above, but just in case
         return NextResponse.json(
           {
-            success: true, // Job was likely triggered, just timed out waiting
-            message: 'Job triggered (may still be running)',
-            note: 'The job request was sent to Railway. It may still be running in the background. Please check the events page in a few minutes to see if new events were created.',
+            success: true,
+            message: 'Job triggered (running in background)',
+            note: 'The job request was sent to Railway. Please check back in a few minutes.',
             timestamp: new Date().toISOString(),
           },
-          { status: 202 } // 202 Accepted - request accepted but not completed
+          { status: 202 }
         );
       }
       
