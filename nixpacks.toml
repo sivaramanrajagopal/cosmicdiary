@@ -11,5 +11,5 @@ cmds = []
 cmd = "python api_server.py"
 
 [providers]
-python = "cpython310"
+providers = ["python"]
 
