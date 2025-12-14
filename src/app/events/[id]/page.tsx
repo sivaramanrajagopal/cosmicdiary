@@ -11,16 +11,16 @@ async function PlanetaryDataSection({ event }: { event: Event }) {
   
   if (!planetaryData || !planetaryData.planetary_data?.planets || planetaryData.planetary_data.planets.length === 0) {
     return (
-      <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-        <h3 className="text-2xl font-semibold mb-4">Planetary Positions</h3>
-        <p className="text-slate-400">No planetary data available for this date.</p>
+      <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
+        <h3 className="text-xl sm:text-2xl font-semibold mb-4">Planetary Positions</h3>
+        <p className="text-slate-400 text-sm sm:text-base">No planetary data available for this date.</p>
       </div>
     );
   }
-  
+
   return (
     <div>
-      <h3 className="text-2xl font-semibold mb-4">Planetary Positions</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold mb-4">Planetary Positions</h3>
       <TransitTable planets={planetaryData.planetary_data.planets} />
     </div>
   );
@@ -47,20 +47,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="flex-1">
           <Link
             href="/events"
-            className="text-purple-400 hover:text-purple-300 mb-4 inline-block"
+            className="text-purple-400 hover:text-purple-300 mb-4 inline-block text-sm"
           >
             ← Back to Events
           </Link>
-          <h2 className="text-3xl font-bold mb-2">{event.title}</h2>
-          <p className="text-slate-400">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2">{event.title}</h2>
+          <p className="text-slate-400 text-sm sm:text-base">
             {format(new Date(event.date), 'MMMM dd, yyyy')}
           </p>
         </div>
-        <span className={`text-sm px-4 py-2 rounded font-semibold ${
+        <span className={`text-xs sm:text-sm px-3 sm:px-4 py-2 rounded font-semibold whitespace-nowrap self-start ${
           event.impact_level === 'critical' ? 'bg-red-950/70 text-red-100' :
           event.impact_level === 'high' ? 'bg-red-900/50 text-red-200' :
           event.impact_level === 'medium' ? 'bg-yellow-900/50 text-yellow-200' :
@@ -70,16 +70,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </span>
       </div>
 
-      <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+      <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
         <div className="space-y-4">
           {event.description && (
             <div>
               <h3 className="text-sm font-medium text-slate-400 mb-1">Description</h3>
-              <p className="text-white">{event.description}</p>
+              <p className="text-white text-sm sm:text-base">{event.description}</p>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-medium text-slate-400 mb-1">Category</h3>
               <p className="text-white">{event.category}</p>

@@ -191,14 +191,14 @@ export default function NewEventPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">Create New Event</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <h2 className="text-2xl sm:text-3xl font-bold mb-6">Create New Event</h2>
+
+      <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
         {/* ============================================================
             SECTION 1: EVENT DETAILS
             ============================================================ */}
-        <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-          <h3 className="text-xl font-semibold mb-4 text-purple-300">Event Details</h3>
+        <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4 text-purple-300">Event Details</h3>
           
           <div className="space-y-4">
             <div>
@@ -354,8 +354,8 @@ export default function NewEventPage() {
         {/* ============================================================
             SECTION 2: DATE & TIME SELECTION
             ============================================================ */}
-        <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-          <h3 className="text-xl font-semibold mb-4 text-purple-300">Date & Time</h3>
+        <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4 text-purple-300">Date & Time</h3>
           
           <div className="space-y-4">
             <div>
@@ -482,8 +482,8 @@ export default function NewEventPage() {
         {/* ============================================================
             SECTION 3: LOCATION COORDINATES
             ============================================================ */}
-        <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-          <h3 className="text-xl font-semibold mb-4 text-purple-300">Location Coordinates</h3>
+        <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4 text-purple-300">Location Coordinates</h3>
           
           <div className="space-y-4">
             <div>
@@ -545,18 +545,18 @@ export default function NewEventPage() {
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <button
             type="submit"
             disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 px-6 py-2 rounded-lg transition-colors font-medium"
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 px-6 py-2 rounded-lg transition-colors font-medium w-full sm:w-auto"
           >
             {loading ? 'Creating...' : 'Create Event'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-lg transition-colors"
+            className="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-lg transition-colors w-full sm:w-auto"
           >
             Cancel
           </button>
