@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEvents, createEvent } from '@/lib/database';
+import { getEvents, createEvent, getFilteredEvents, EventFilter } from '@/lib/database';
 import { calculateAndStoreCorrelations } from '@/lib/storeCorrelations';
 import { Event } from '@/lib/types';
 
@@ -7,7 +7,31 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get('date') || undefined;
-    
+
+    // Check if filters are present
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const planets = searchParams.get('planets')?.split(',').filter(p => p) || undefined;
+    const categories = searchParams.get('categories')?.split(',').filter(c => c) || undefined;
+    const impactLevels = searchParams.get('impactLevels')?.split(',').filter(i => i) || undefined;
+    const eventType = searchParams.get('eventType') as 'world' | 'personal' | undefined;
+
+    // If any filters are present, use getFilteredEvents
+    if (startDate || endDate || planets || categories || impactLevels || eventType) {
+      const filters: EventFilter = {
+        startDate,
+        endDate,
+        planets,
+        categories,
+        impactLevels,
+        eventType,
+      };
+
+      const events = await getFilteredEvents(filters);
+      return NextResponse.json(events);
+    }
+
+    // Otherwise use the simple getEvents
     const events = await getEvents(date);
     return NextResponse.json(events);
   } catch (error) {

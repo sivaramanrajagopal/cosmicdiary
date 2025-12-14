@@ -5,21 +5,90 @@ export async function getEvents(date?: string): Promise<Event[]> {
   try {
     // Order by created_at DESC to show latest events first (for analysis page)
     let query = supabase.from('events').select('*').order('created_at', { ascending: false });
-    
+
     if (date) {
       query = query.eq('date', date);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) {
       console.error('Error fetching events:', error);
       return [];
     }
-    
+
     return (data || []).map(formatEvent);
   } catch (error) {
     console.error('Error fetching events:', error);
+    return [];
+  }
+}
+
+export interface EventFilter {
+  startDate?: string;
+  endDate?: string;
+  planets?: string[];
+  categories?: string[];
+  impactLevels?: string[];
+  eventType?: 'world' | 'personal';
+}
+
+export async function getFilteredEvents(filters: EventFilter): Promise<Event[]> {
+  try {
+    let query = supabase.from('events').select('*');
+
+    // Apply date range filter
+    if (filters.startDate) {
+      query = query.gte('date', filters.startDate);
+    }
+    if (filters.endDate) {
+      query = query.lte('date', filters.endDate);
+    }
+
+    // Apply category filter
+    if (filters.categories && filters.categories.length > 0) {
+      query = query.in('category', filters.categories);
+    }
+
+    // Apply impact level filter
+    if (filters.impactLevels && filters.impactLevels.length > 0) {
+      query = query.in('impact_level', filters.impactLevels);
+    }
+
+    // Apply event type filter
+    if (filters.eventType) {
+      query = query.eq('event_type', filters.eventType);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching filtered events:', error);
+      return [];
+    }
+
+    let events = (data || []).map(formatEvent);
+
+    // Filter by planets (requires checking correlations)
+    if (filters.planets && filters.planets.length > 0) {
+      // Get event IDs that have correlations with the specified planets
+      const { data: correlations, error: corrError } = await supabase
+        .from('event_planetary_correlations')
+        .select('event_id, planet_name')
+        .in('planet_name', filters.planets);
+
+      if (!corrError && correlations) {
+        // Get unique event IDs that match the planet filters
+        const matchingEventIds = new Set(correlations.map(c => c.event_id));
+        events = events.filter(event => event.id && matchingEventIds.has(event.id));
+      }
+    }
+
+    return events;
+  } catch (error) {
+    console.error('Error fetching filtered events:', error);
     return [];
   }
 }
