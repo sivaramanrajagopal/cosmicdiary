@@ -64,3 +64,4 @@ automated_events/*.json
 
 # OS
 Thumbs.db
+email_*.html
