@@ -4,17 +4,18 @@ import { getEventById, getPlanetaryDataForEvent, getHouseMapping, getPlanetaryAs
 import { format } from 'date-fns';
 import TransitTable from '@/components/TransitTable';
 import ChartSection from '@/components/charts/ChartSection';
+import FetchPlanetaryDataButton from '@/components/FetchPlanetaryDataButton';
 import { Event } from '@/lib/types';
 
 async function PlanetaryDataSection({ event }: { event: Event }) {
   const planetaryData = await getPlanetaryDataForEvent(event);
-  
+
   if (!planetaryData || !planetaryData.planetary_data?.planets || planetaryData.planetary_data.planets.length === 0) {
     return (
-      <div className="bg-slate-800/50 p-4 sm:p-6 rounded-lg border border-slate-700">
-        <h3 className="text-xl sm:text-2xl font-semibold mb-4">Planetary Positions</h3>
-        <p className="text-slate-400 text-sm sm:text-base">No planetary data available for this date.</p>
-      </div>
+      <FetchPlanetaryDataButton
+        eventId={event.id!}
+        eventDate={format(new Date(event.date), 'MMM dd, yyyy')}
+      />
     );
   }
 

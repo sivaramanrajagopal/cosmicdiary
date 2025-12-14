@@ -71,3 +71,33 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    if (!body.date || !body.planetary_data) {
+      return NextResponse.json(
+        { error: 'Missing required fields: date, planetary_data' },
+        { status: 400 }
+      );
+    }
+
+    const result = await createPlanetaryData(body);
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to store planetary data' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    console.error('Error storing planetary data:', error);
+    return NextResponse.json(
+      { error: 'Failed to store planetary data' },
+      { status: 500 }
+    );
+  }
+}
