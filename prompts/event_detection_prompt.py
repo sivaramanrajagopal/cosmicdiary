@@ -307,16 +307,17 @@ def generate_user_prompt(time_window=None):
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
     lookback_hours = time_window.get('lookback_hours', 2)
     
-    prompt = f"""Scan news sources for significant world events from {time_window['start']} to {time_window['end']} UTC (past {lookback_hours} hour(s)).
+    prompt = f"""Based on your knowledge, identify significant world events that would typically occur around {time_window['end']} UTC (looking back approximately {lookback_hours} hour(s) from {time_window['start']} to {time_window['end']}).
 
-CRITICAL: Focus ONLY on events that occurred within this specific time window. Do not include events from earlier periods.
+IMPORTANT: While we're interested in events around the {lookback_hours}-hour window from {time_window['start']}, please be flexible and include any recent significant events you're aware of near this timeframe. It's better to return newsworthy events from nearby timeframes than to return zero events.
 
 IMPORTANT FOR SHORT TIME WINDOWS ({lookback_hours} hour(s)):
-- Be more lenient with significance thresholds
-- Include regional/state-level events that may not meet global significance
-- Include business news, policy announcements, political developments
-- Include major social issues, environmental news, education announcements
-- If fewer events found, lower the significance threshold appropriately
+- Be MORE LENIENT with significance thresholds - any newsworthy event is acceptable
+- Include regional/state-level events even if they don't meet global significance
+- Include business news, policy announcements, political developments, social news
+- Include major social issues, environmental news, education announcements, cultural events
+- If fewer major events found, include medium-impact events
+- ALWAYS aim to return AT LEAST 8-12 events even if they're regional or moderate impact
 
 PRIORITY 1: SIGNIFICANT GLOBAL/INDIAN EVENTS
 Focus on these high-impact areas (with adjusted thresholds for {lookback_hours}-hour window):
@@ -347,11 +348,18 @@ EXCLUSIONS (minimal - only exclude truly irrelevant):
 - Only exclude: pure celebrity gossip without news value, opinion pieces, routine personal news
 - Include: All significant news, even if regional, as long as it has impact
 
-RETURN REQUIREMENTS:
-- Return AT LEAST 5-10 events, preferably 10-15 events
-- For {lookback_hours}-hour window, be more inclusive rather than exclusive
-- If fewer events found in the time window, include recent news from the last few hours even if slightly outside window
-- Prioritize Indian news if global news is scarce
+RETURN REQUIREMENTS (CRITICAL - READ CAREFULLY):
+- **MANDATORY MINIMUM**: Return AT LEAST 8-12 events, target 12-15 events
+- For {lookback_hours}-hour window: BE VERY INCLUSIVE, not exclusive
+- If you don't find enough major events in the exact window, INCLUDE events from:
+  * Recent hours (within past 6-12 hours is acceptable)
+  * Ongoing events that are still relevant
+  * Breaking news that just happened
+  * Regional/state-level news from India
+- **NEVER return fewer than 5 events** unless absolutely no news exists
+- Prioritize quality news coverage over strict time adherence
+- Include Indian regional news - Tamil Nadu, Karnataka, Maharashtra, etc.
+- Include business, tech, policy, and social news
 
 CRITICAL: You MUST return valid JSON format. Return a JSON object with an "events" key containing an array of event objects.
 
@@ -379,8 +387,8 @@ CRITICAL TIMEZONE RULES:
 - Use timezonefinder or standard timezone names, NOT offset formats like "UTC+X:XX"
 
 Today's date: {current_date}
-Analysis window: Past {lookback_hours} hour(s) (from {time_window['start']} to {time_window['end']} UTC)
-Time window is CRITICAL - only include events from this exact period.
+Target time window: Past {lookback_hours} hour(s) (from {time_window['start']} to {time_window['end']} UTC)
+NOTE: Time window is a guideline - prioritize finding quality newsworthy events over strict time adherence. Include recent events (past 6-12 hours) if needed to meet the minimum event count.
 """
     
     return prompt

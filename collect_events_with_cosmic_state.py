@@ -338,6 +338,125 @@ def capture_cosmic_snapshot() -> Tuple[int, Dict[str, Any]]:
         raise
 
 
+def fetch_newsapi_events(lookback_hours: int = 2) -> List[Dict[str, Any]]:
+    """
+    Fetch real-time news from NewsAPI.org
+
+    Args:
+        lookback_hours: Number of hours to look back for news
+
+    Returns:
+        List of event dictionaries in our standard format
+    """
+    import requests
+    from datetime import timedelta
+
+    api_key = os.getenv('NEWSAPI_KEY')
+    if not api_key:
+        return []
+
+    print("📰 ATTEMPTING NEWSAPI INTEGRATION")
+    print("-" * 80)
+    print(f"🔑 NewsAPI key detected: {api_key[:10]}...")
+
+    try:
+        # Calculate time window
+        from_time = (datetime.now(timezone.utc) - timedelta(hours=lookback_hours)).isoformat()
+
+        # NewsAPI request
+        url = 'https://newsapi.org/v2/everything'
+        params = {
+            'apiKey': api_key,
+            'from': from_time,
+            'language': 'en',
+            'sortBy': 'publishedAt',
+            'pageSize': 50,
+            'q': '(India OR earthquake OR flood OR cyclone OR stock OR economy OR inflation OR politics OR technology OR health OR AI) -sports'
+        }
+
+        print(f"📡 Fetching news from NewsAPI...")
+        print(f"   Time window: Past {lookback_hours} hours")
+        print(f"   From: {from_time}")
+
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+
+        if data['status'] != 'ok':
+            print(f"❌ NewsAPI error: {data.get('message', 'Unknown error')}")
+            return []
+
+        articles = data.get('articles', [])
+        total_results = data.get('totalResults', 0)
+        print(f"✅ NewsAPI returned {len(articles)} articles (total available: {total_results})")
+
+        if len(articles) == 0:
+            print("⚠️  No articles found in time window")
+            return []
+
+        # Convert to event format
+        events = []
+        for i, article in enumerate(articles[:20], 1):  # Limit to top 20
+            # Simple categorization based on content
+            text = (article.get('title', '') + ' ' + article.get('description', '')).lower()
+
+            # Categorize
+            if any(word in text for word in ['earthquake', 'flood', 'cyclone', 'disaster', 'storm']):
+                category = 'Natural Disasters'
+                impact = 'high'
+            elif any(word in text for word in ['stock', 'market', 'economy', 'gdp', 'inflation', 'bank']):
+                category = 'Economic Events'
+                impact = 'medium'
+            elif any(word in text for word in ['election', 'government', 'minister', 'policy', 'parliament']):
+                category = 'Political Events'
+                impact = 'medium'
+            elif any(word in text for word in ['disease', 'health', 'medical', 'hospital', 'covid']):
+                category = 'Health & Medical'
+                impact = 'high'
+            elif any(word in text for word in ['tech', 'ai', 'space', 'innovation', 'launch']):
+                category = 'Technology & Innovation'
+                impact = 'medium'
+            elif any(word in text for word in ['war', 'conflict', 'attack', 'military']):
+                category = 'Wars & Conflicts'
+                impact = 'high'
+            else:
+                category = 'Other'
+                impact = 'low'
+
+            # Extract location from source or default to India
+            source_name = article.get('source', {}).get('name', '')
+            location = 'India' if 'india' in source_name.lower() else 'Unknown'
+
+            event = {
+                'title': article['title'][:100],
+                'description': (article.get('description') or article.get('content') or '')[:500],
+                'date': article['publishedAt'][:10],
+                'time': article['publishedAt'][11:19],
+                'timezone': 'UTC',
+                'location': location,
+                'category': category,
+                'impact_level': impact,
+                'sources': [article['url']],
+                'tags': [],
+                'impact_metrics': {},
+                'astrological_relevance': None  # Will be auto-mapped later
+            }
+            events.append(event)
+            print(f"  {i}. {event['title'][:60]}")
+
+        print(f"\n✅ Converted {len(events)} NewsAPI articles to events")
+        return events
+
+    except requests.exceptions.RequestException as e:
+        print(f"❌ NewsAPI request failed: {e}")
+        return []
+    except Exception as e:
+        print(f"❌ NewsAPI error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+
 def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
     """
     Detect world events using OpenAI API.
@@ -515,11 +634,20 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
             print("   2. Prompt may be too restrictive for a short time window")
             print("   3. OpenAI API may have rate limiting or issues")
             print("   4. The time window might be too short")
+            print("   5. OpenAI's knowledge cutoff may not include recent events")
+            print("")
+            print("🔧 DEBUG INFORMATION:")
+            print(f"   - Lookback hours: {lookback_h}")
+            print(f"   - Time window: {time_window['start']} to {time_window['end']} UTC")
+            print(f"   - Model used: gpt-4o-mini")
+            print(f"   - Response format: JSON object")
+            print(f"   - Prompt length: {len(user_prompt)} chars")
             print("")
             print("🔧 SUGGESTIONS:")
-            print("   - Check if there were actually events in the time window")
-            print("   - Try increasing lookback_hours if this is a scheduled run")
-            print("   - Check OpenAI API status and usage limits")
+            print("   - OpenAI has limited real-time news access (training data cutoff)")
+            print("   - For 2-hour windows, consider using a news API instead")
+            print("   - Try increasing lookback_hours to 6-12 hours for better results")
+            print("   - Check OpenAI API status: https://status.openai.com")
             print("")
             return []
         
@@ -635,23 +763,42 @@ def detect_events_openai(lookback_hours: int = None) -> List[Dict[str, Any]]:
         print("")
         
         if not validated_events:
-            print("⚠️  No valid events after validation")
-            print("🔍 DEBUGGING: Checking what OpenAI returned...")
+            print("")
+            print("=" * 80)
+            print("⚠️  NO VALID EVENTS AFTER VALIDATION")
+            print("=" * 80)
+            print("🔍 DEBUGGING: Analyzing what OpenAI returned...")
+            print("")
             if events:
-                print(f"   - OpenAI returned {len(events)} events")
-                print("   - Sample of rejected events:")
-                rejected_count = 0
-                for event in events[:3]:  # Show first 3 rejected events
-                    print(f"     {rejected_count + 1}. Title: {event.get('title', 'N/A')[:60]}")
-                    print(f"        Category: {event.get('category', 'N/A')}")
-                    print(f"        Impact: {event.get('impact_level', 'N/A')}")
-                    rejected_count += 1
+                print(f"📊 OpenAI Response Summary:")
+                print(f"   - Total events returned: {len(events)}")
+                print(f"   - All events rejected during validation")
+                print("")
+                print("📋 Sample of Rejected Events (first 5):")
+                for i, event in enumerate(events[:5], 1):
+                    print(f"   {i}. Title: {event.get('title', 'N/A')[:70]}")
+                    print(f"      Category: {event.get('category', 'N/A')}")
+                    print(f"      Impact: {event.get('impact_level', 'N/A')}")
+                    print(f"      Has description: {bool(event.get('description'))}")
+                    print(f"      Description length: {len(event.get('description', ''))} chars")
+                    print(f"      Has astro mapping: {bool(event.get('astrological_relevance'))}")
+                    print("")
+                print(f"💡 Most Common Rejection Reasons:")
+                for reason, count in sorted(validation_stats['reasons'].items(), key=lambda x: x[1], reverse=True):
+                    print(f"   - {reason}: {count} event(s)")
+                print("")
             else:
-                print("   - OpenAI returned 0 events (empty response)")
-                print("   - Possible reasons:")
-                print("     * No significant events in the time window")
-                print("     * Prompt too restrictive for short time window")
-                print("     * OpenAI API issue or rate limiting")
+                print("📊 OpenAI Response Summary:")
+                print("   - OpenAI returned 0 events (completely empty response)")
+                print("")
+                print("💡 Possible Causes:")
+                print("   1. Time window too narrow ({lookback_h} hours) - OpenAI lacks real-time data")
+                print("   2. OpenAI's knowledge cutoff doesn't include recent events")
+                print("   3. Prompt may be confusing or contradictory")
+                print("   4. API rate limiting or service issues")
+                print("")
+            print("=" * 80)
+            print("")
             return []
         
         # Sort by research score and take top 15
@@ -992,7 +1139,35 @@ def main():
         # STEP 2: Detect Events with specified lookback window
         print("Starting STEP 2...")
         try:
-            events_detected = detect_events_openai(lookback_hours=lookback_hours)
+            # Try NewsAPI first (if key is available), then fall back to OpenAI
+            newsapi_key = os.getenv('NEWSAPI_KEY')
+
+            if newsapi_key:
+                print("🔄 Attempting NewsAPI integration first...")
+                newsapi_events = fetch_newsapi_events(lookback_hours=lookback_hours)
+
+                if len(newsapi_events) >= 5:
+                    print(f"✅ Using {len(newsapi_events)} events from NewsAPI")
+                    print("   (NewsAPI provides real-time news - better than OpenAI)")
+
+                    # Auto-map astrological relevance for NewsAPI events
+                    print("\n🔮 Auto-mapping astrological relevance for NewsAPI events...")
+                    for event in newsapi_events:
+                        if not event.get('astrological_relevance'):
+                            event['astrological_relevance'] = auto_map_event_to_astrology(event)
+                        # Calculate research score
+                        event['research_score'] = calculate_research_score(event)
+
+                    events_detected = newsapi_events
+                else:
+                    print(f"⚠️  NewsAPI returned only {len(newsapi_events)} events")
+                    print("   Falling back to OpenAI for better coverage...")
+                    events_detected = detect_events_openai(lookback_hours=lookback_hours)
+            else:
+                print("ℹ️  NEWSAPI_KEY not set, using OpenAI")
+                print("   Tip: Get a free NewsAPI key at https://newsapi.org/register for real-time news")
+                events_detected = detect_events_openai(lookback_hours=lookback_hours)
+
             print(f"✓ STEP 2 completed. Events detected: {len(events_detected)}")
         except Exception as step2_error:
             print("")
@@ -1012,6 +1187,15 @@ def main():
             print("   - No significant events occurred in the time window")
             print("   - OpenAI returned 0 events (check logs above)")
             print("   - All events were filtered during validation")
+
+            # Output statistics even if zero (for GitHub Actions)
+            print("")
+            print("::group::GitHub Actions Output")
+            print("EVENTS_DETECTED=0")
+            print("EVENTS_STORED=0")
+            print("CORRELATIONS_CREATED=0")
+            print("AVG_CORRELATION_SCORE=0.00")
+            print("::endgroup::")
             return
         
         # STEP 3-4: Process Each Event
@@ -1067,11 +1251,23 @@ def main():
             print(f"✓ Average Correlation Score: {avg_score:.2f}")
             print(f"✓ Highest Correlation Score: {max(correlation_scores):.2f}")
             print(f"✓ Lowest Correlation Score: {min(correlation_scores):.2f}")
+        else:
+            avg_score = 0.0
         success_rate = (events_stored / len(events_detected) * 100) if events_detected else 0
         print(f"✓ Success Rate: {success_rate:.1f}%")
         print("=" * 80)
         print("")
         print("✅ Event collection completed successfully!")
+
+        # Output statistics in GitHub Actions format (for workflow parsing)
+        # These will be captured by the GitHub Actions workflow
+        print("")
+        print("::group::GitHub Actions Output")
+        print(f"EVENTS_DETECTED={len(events_detected)}")
+        print(f"EVENTS_STORED={events_stored}")
+        print(f"CORRELATIONS_CREATED={correlations_created}")
+        print(f"AVG_CORRELATION_SCORE={avg_score:.2f}")
+        print("::endgroup::")
         
     except KeyboardInterrupt:
         print("")
@@ -1089,6 +1285,16 @@ def main():
         traceback.print_exc()
         print("=" * 80)
         print("")
+
+        # Output error statistics (for GitHub Actions)
+        print("")
+        print("::group::GitHub Actions Output")
+        print("EVENTS_DETECTED=0")
+        print("EVENTS_STORED=0")
+        print("CORRELATIONS_CREATED=0")
+        print("AVG_CORRELATION_SCORE=0.00")
+        print(f"ERROR_MESSAGE={str(e).replace('=', '-')}")  # Escape = sign
+        print("::endgroup::")
         sys.exit(1)
 
 

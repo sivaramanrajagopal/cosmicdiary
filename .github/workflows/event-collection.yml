@@ -37,26 +37,65 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FLASK_API_URL: ${{ secrets.FLASK_API_URL }}
-          EVENT_LOOKBACK_HOURS: '2'  # GitHub Actions: 2 hours (runs every 2 hours)
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}  # Optional: For real-time news
+          EVENT_LOOKBACK_HOURS: '12'  # Changed from 2 to 12 for better results with OpenAI
         run: |
-          python collect_events_with_cosmic_state.py --lookback-hours 2
+          python collect_events_with_cosmic_state.py --lookback-hours 12 2>&1 | tee collection_output.log
         continue-on-error: true
-      
+
       - name: Extract collection statistics
         id: stats
         if: always()
         run: |
-          # Extract stats from script output (if available)
-          # For now, set defaults - these can be parsed from logs if needed
-          echo "events_detected=0" >> $GITHUB_OUTPUT
-          echo "events_stored=0" >> $GITHUB_OUTPUT
-          echo "correlations_created=0" >> $GITHUB_OUTPUT
-          echo "avg_score=" >> $GITHUB_OUTPUT
+          # Parse statistics from script output
+          # The Python script outputs lines like: EVENTS_DETECTED=5
+
+          # Default values
+          EVENTS_DETECTED=0
+          EVENTS_STORED=0
+          CORRELATIONS_CREATED=0
+          AVG_SCORE=0.00
+
+          # Try to extract from log file
+          if [ -f collection_output.log ]; then
+            # Extract values using grep and sed
+            DETECTED=$(grep "EVENTS_DETECTED=" collection_output.log | tail -1 | sed 's/EVENTS_DETECTED=//')
+            STORED=$(grep "EVENTS_STORED=" collection_output.log | tail -1 | sed 's/EVENTS_STORED=//')
+            CORRELATIONS=$(grep "CORRELATIONS_CREATED=" collection_output.log | tail -1 | sed 's/CORRELATIONS_CREATED=//')
+            SCORE=$(grep "AVG_CORRELATION_SCORE=" collection_output.log | tail -1 | sed 's/AVG_CORRELATION_SCORE=//')
+
+            # Use extracted values if they exist
+            [ ! -z "$DETECTED" ] && EVENTS_DETECTED=$DETECTED
+            [ ! -z "$STORED" ] && EVENTS_STORED=$STORED
+            [ ! -z "$CORRELATIONS" ] && CORRELATIONS_CREATED=$CORRELATIONS
+            [ ! -z "$SCORE" ] && AVG_SCORE=$SCORE
+
+            echo "📊 Parsed Statistics:"
+            echo "  Events Detected: $EVENTS_DETECTED"
+            echo "  Events Stored: $EVENTS_STORED"
+            echo "  Correlations Created: $CORRELATIONS_CREATED"
+            echo "  Avg Correlation Score: $AVG_SCORE"
+          else
+            echo "⚠️  Log file not found, using default values (all zeros)"
+          fi
+
+          # Output to GitHub Actions
+          echo "events_detected=$EVENTS_DETECTED" >> $GITHUB_OUTPUT
+          echo "events_stored=$EVENTS_STORED" >> $GITHUB_OUTPUT
+          echo "correlations_created=$CORRELATIONS_CREATED" >> $GITHUB_OUTPUT
+          echo "avg_score=$AVG_SCORE" >> $GITHUB_OUTPUT
       
       - name: Report Success Statistics
         if: success()
         run: |
           echo "✓ Cosmic state captured and events processed successfully"
+          echo ""
+          echo "📊 Collection Statistics:"
+          echo "  • Events Detected: ${{ steps.stats.outputs.events_detected }}"
+          echo "  • Events Stored: ${{ steps.stats.outputs.events_stored }}"
+          echo "  • Correlations Created: ${{ steps.stats.outputs.correlations_created }}"
+          echo "  • Average Correlation Score: ${{ steps.stats.outputs.avg_score }}"
+          echo ""
           echo "Check workflow logs for detailed statistics"
       
       - name: Send Success Email Notification
@@ -93,6 +132,7 @@ jobs:
           name: event-collection-logs-${{ github.run_id }}
           path: |
             *.log
+            collection_output.log
           retention-days: 7
       
       - name: Log failure (issue creation disabled)
