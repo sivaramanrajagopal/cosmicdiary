@@ -84,9 +84,56 @@ export default function PlanetaryImpactVisualization() {
   if (!data || data.total_events === 0) {
     return (
       <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
-        <h3 className="text-xl font-semibold mb-4">🔮 Planetary Impact Analysis</h3>
-        <div className="text-slate-400 text-center py-8">
-          No events found for the selected period.
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">🔮 Planetary Impact Analysis</h3>
+          <div className="flex gap-2">
+            {(['day', 'week', 'month'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  period === p
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="text-center py-8 space-y-4">
+          <div className="text-slate-400">
+            No analyzed events found for the selected period.
+          </div>
+          <div className="text-sm text-slate-500 max-w-2xl mx-auto">
+            <p className="mb-2">Planetary impact analysis requires events with:</p>
+            <ul className="list-disc list-inside space-y-1 text-left inline-block">
+              <li>Complete astrological charts (house positions)</li>
+              <li>Planetary aspects calculated</li>
+              <li>House mappings assigned</li>
+            </ul>
+            <p className="mt-4">These are created automatically when:</p>
+            <ul className="list-disc list-inside space-y-1 text-left inline-block">
+              <li>GitHub Actions collects events (every 2 hours)</li>
+              <li>You create events and fetch planetary data</li>
+              <li>You run correlation analysis</li>
+            </ul>
+          </div>
+          <div className="flex gap-3 justify-center mt-6">
+            <a
+              href="/events/new"
+              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+            >
+              + Create Event
+            </a>
+            <a
+              href="/events"
+              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+            >
+              View All Events
+            </a>
+          </div>
         </div>
       </div>
     );
