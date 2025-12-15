@@ -105,8 +105,8 @@ export default function PlanetaryStrengthPanel({ planets }: PlanetaryStrengthPan
                 borderRadius: '6px',
               }}
               labelStyle={{ color: '#cbd5e1' }}
-              formatter={(value: number, name: string, props: any) => [
-                `${value.toFixed(1)}%`,
+              formatter={(value: any, name: string, props: any) => [
+                `${typeof value === 'number' ? value.toFixed(1) : '0.0'}%`,
                 props.payload.fullName,
               ]}
             />
