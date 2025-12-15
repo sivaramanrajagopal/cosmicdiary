@@ -159,10 +159,11 @@ export default function PlanetaryImpactVisualization() {
                     border: '1px solid #374151',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number, payload: any) => {
-                    const data = payload[0]?.payload;
+                  formatter={(value?: any, payload?: any) => {
+                    const data = payload?.[0]?.payload;
+                    const numValue = typeof value === 'number' ? value : 0;
                     return [
-                      `${value} events`,
+                      `${numValue} events`,
                       data?.fullName || ''
                     ];
                   }}
@@ -206,10 +207,11 @@ export default function PlanetaryImpactVisualization() {
                     border: '1px solid #374151',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number, payload: any) => {
-                    const data = payload[0]?.payload;
+                  formatter={(value?: any, payload?: any) => {
+                    const data = payload?.[0]?.payload;
+                    const numValue = typeof value === 'number' ? value : 0;
                     return [
-                      `${value} events`,
+                      `${numValue} events`,
                       `Aspects: ${data?.aspects || 0}`
                     ];
                   }}
