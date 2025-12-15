@@ -1046,13 +1046,13 @@ def correlate_and_store(
 ) -> bool:
     """
     Correlate event with snapshot and store results.
-    
+
     Args:
         event_id: Database ID of the event
         event_chart: Event chart data dictionary
         snapshot_id: Database ID of the snapshot
         snapshot_chart: Snapshot chart data dictionary
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -1063,7 +1063,7 @@ def correlate_and_store(
             snapshot_chart=snapshot_chart,
             snapshot_id=snapshot_id
         )
-        
+
         # Prepare correlation data for database
         correlation_db_data = {
             "event_id": event_id,
@@ -1072,21 +1072,110 @@ def correlate_and_store(
             "matching_factors": correlation_data.get('correlations', []),
             "total_matches": correlation_data.get('total_matches', 0)
         }
-        
-        # Insert into event_cosmic_correlations table
+
+        # Insert into event_cosmic_correlations table (for analysis)
         correlation_insert_result = supabase.table('event_cosmic_correlations').insert(correlation_db_data).execute()
-        
+
         if correlation_insert_result.data and len(correlation_insert_result.data) > 0:
-            print(f"    ✓ Correlation stored (Score: {correlation_db_data['correlation_score']:.2f}, Matches: {correlation_db_data['total_matches']})")
-            return True
+            print(f"    ✓ Cosmic correlation stored (Score: {correlation_db_data['correlation_score']:.2f}, Matches: {correlation_db_data['total_matches']})")
         else:
-            print(f"    ✗ Correlation insert returned no data")
+            print(f"    ✗ Cosmic correlation insert returned no data")
             if hasattr(correlation_insert_result, 'error') and correlation_insert_result.error:
                 print(f"    ✗ Database error: {correlation_insert_result.error}")
-            return False
-    
+
+        # ALSO insert into event_planetary_correlations (for Next.js app compatibility)
+        # Extract planet-specific correlations from the correlation data
+        planetary_correlations_stored = 0
+        correlations_list = correlation_data.get('correlations', [])
+
+        # Get event date from chart or fetch from database
+        try:
+            event_data = supabase.table('events').select('date').eq('id', event_id).single().execute()
+            event_date = event_data.data.get('date') if event_data.data else None
+        except:
+            event_date = None
+
+        # Extract planetary positions from event chart
+        planetary_positions = event_chart.get('planetary_positions', {})
+
+        # Create correlations for significant planets mentioned in correlations
+        for correlation in correlations_list:
+            corr_type = correlation.get('type', '')
+            description = correlation.get('description', '')
+            score = correlation.get('score', 0.0)
+
+            # Extract planet names from correlation descriptions
+            planets_to_store = []
+
+            if 'retrograde' in corr_type.lower():
+                # Extract retrograde planets
+                details = correlation.get('details', {})
+                matching_planets = details.get('matching_planets', [])
+                for planet in matching_planets:
+                    planets_to_store.append((planet, f"{planet} retrograde correlation", score))
+
+            elif 'house' in corr_type.lower():
+                # Extract house position matches
+                details = correlation.get('details', {})
+                matching_planets = details.get('matching_planets', [])
+                for match in matching_planets:
+                    planet = match.get('planet', '')
+                    house = match.get('house', '')
+                    if planet:
+                        planets_to_store.append((planet, f"{planet} in house {house}", score))
+
+            elif 'rasi' in corr_type.lower():
+                # Extract rasi matches
+                details = correlation.get('details', {})
+                matching_planets = details.get('matching_planets', [])
+                for match in matching_planets:
+                    planet = match.get('planet', '')
+                    rasi = match.get('rasi', '')
+                    if planet:
+                        planets_to_store.append((planet, f"{planet} in {rasi}", score))
+
+            elif 'aspect' in corr_type.lower():
+                # Extract aspect matches
+                details = correlation.get('details', {})
+                matching_aspects = details.get('matching_aspects', [])
+                for aspect in matching_aspects:
+                    planet1 = aspect.get('planet1', '')
+                    planet2 = aspect.get('planet2', '')
+                    aspect_type = aspect.get('type', '')
+                    if planet1:
+                        planets_to_store.append((planet1, f"{planet1} {aspect_type} {planet2}", score))
+
+            # Store each planet correlation
+            for planet_name, reason, planet_score in planets_to_store:
+                if planet_name and planet_name in planetary_positions:
+                    planet_data = planetary_positions[planet_name]
+
+                    planet_correlation = {
+                        "event_id": event_id,
+                        "date": event_date,
+                        "planet_name": planet_name,
+                        "planet_position": planet_data,
+                        "correlation_score": planet_score,
+                        "reason": reason
+                    }
+
+                    try:
+                        result = supabase.table('event_planetary_correlations').insert(planet_correlation).execute()
+                        if result.data:
+                            planetary_correlations_stored += 1
+                    except Exception as planet_err:
+                        # Don't fail the whole process if one planet correlation fails
+                        pass
+
+        if planetary_correlations_stored > 0:
+            print(f"    ✓ {planetary_correlations_stored} planetary correlations stored for Next.js app")
+
+        return True
+
     except Exception as e:
         print(f"    ✗ Error correlating and storing: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
