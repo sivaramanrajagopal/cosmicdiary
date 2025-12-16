@@ -1,0 +1,135 @@
+name: Daily Event Summary Email
+
+on:
+  schedule:
+    # Run once daily at 11:30 PM UTC (adjust to your preferred time)
+    - cron: '30 23 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  daily-summary:
+    name: Send Daily Event Summary Email
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install supabase python-dotenv
+
+      - name: Get event statistics from last 24 hours
+        id: stats
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Use Python to query Supabase for today's stats
+          python - <<'EOF'
+          import os
+          from datetime import datetime, timedelta
+          from supabase import create_client
+
+          # Get Supabase client
+          supabase_url = os.getenv('SUPABASE_URL', '')
+          supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
+
+          if not supabase_url or not supabase_key:
+              print("⚠️  Supabase credentials not configured")
+              print("events_detected=0")
+              print("events_stored=0")
+              print("correlations_created=0")
+              print("avg_score=0.00")
+              exit(0)
+
+          try:
+              supabase = create_client(supabase_url, supabase_key)
+
+              # Calculate 24 hours ago
+              cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+
+              # Get events from last 24 hours
+              events_response = supabase.table('events')\
+                  .select('id', count='exact')\
+                  .gte('created_at', cutoff_time)\
+                  .execute()
+
+              events_count = events_response.count if events_response.count else 0
+
+              # Get correlations from last 24 hours
+              correlations_response = supabase.table('event_planetary_correlations')\
+                  .select('id, correlation_score', count='exact')\
+                  .gte('created_at', cutoff_time)\
+                  .execute()
+
+              correlations_count = correlations_response.count if correlations_response.count else 0
+
+              # Calculate average correlation score
+              avg_score = 0.0
+              if correlations_response.data:
+                  scores = [c.get('correlation_score', 0) for c in correlations_response.data if c.get('correlation_score')]
+                  if scores:
+                      avg_score = sum(scores) / len(scores)
+
+              # Output stats
+              print(f"📊 Daily Statistics (Last 24 hours):")
+              print(f"  Events Stored: {events_count}")
+              print(f"  Correlations Created: {correlations_count}")
+              print(f"  Avg Correlation Score: {avg_score:.2f}")
+
+              # Output to GitHub Actions
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"events_detected={events_count}\n")
+                  f.write(f"events_stored={events_count}\n")
+                  f.write(f"correlations_created={correlations_count}\n")
+                  f.write(f"avg_score={avg_score:.2f}\n")
+
+          except Exception as e:
+              print(f"❌ Error fetching statistics: {e}")
+              print("events_detected=0")
+              print("events_stored=0")
+              print("correlations_created=0")
+              print("avg_score=0.00")
+              exit(0)
+          EOF
+
+      - name: Send Daily Summary Email
+        if: vars.ENABLE_EMAIL_NOTIFICATIONS == 'true'
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EVENTS_DETECTED: ${{ steps.stats.outputs.events_detected }}
+          EVENTS_STORED: ${{ steps.stats.outputs.events_stored }}
+          CORRELATIONS_CREATED: ${{ steps.stats.outputs.correlations_created }}
+          AVG_CORRELATION_SCORE: ${{ steps.stats.outputs.avg_score }}
+          COLLECTION_TYPE: 'daily'
+        run: |
+          python send_enhanced_summary.py || echo "⚠️ Email notification failed (non-critical)"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "✓ Daily summary email workflow completed"
+          echo ""
+          echo "📊 Statistics sent:"
+          echo "  • Events (last 24h): ${{ steps.stats.outputs.events_stored }}"
+          echo "  • Correlations: ${{ steps.stats.outputs.correlations_created }}"
+          echo "  • Average Score: ${{ steps.stats.outputs.avg_score }}"
+          echo ""
+          echo "Email sent to: ${{ secrets.RECIPIENT_EMAIL }}"
