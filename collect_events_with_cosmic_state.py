@@ -54,6 +54,9 @@ from correlation_analyzer import (
     extract_planet_rasis
 )
 
+# Event quality filtering system
+from event_quality_filter import apply_event_filters
+
 # Timezone utilities - define inline since it's simple
 def normalize_timezone(timezone_str: str, latitude: float = None, longitude: float = None) -> str:
     """
@@ -1286,7 +1289,58 @@ def main():
             print("AVG_CORRELATION_SCORE=0.00")
             print("::endgroup::")
             return
-        
+
+        # STEP 2b: APPLY QUALITY FILTERS
+        print("")
+        print("Starting STEP 2b: Applying Quality Filters...")
+
+        # Fetch recent events from database for deduplication
+        try:
+            cutoff_date = (datetime.now() - timedelta(hours=72)).strftime('%Y-%m-%d')
+            existing_events_result = supabase.table('events')\
+                .select('id, title, date')\
+                .gte('date', cutoff_date)\
+                .execute()
+            existing_events = existing_events_result.data if existing_events_result.data else []
+            print(f"📋 Fetched {len(existing_events)} recent events for deduplication check")
+        except Exception as e:
+            print(f"⚠️  Could not fetch existing events: {e}")
+            print("   Deduplication check will be skipped")
+            existing_events = []
+
+        # Apply filters
+        try:
+            filtered_events, filter_stats = apply_event_filters(events_detected, existing_events)
+            print(f"✓ STEP 2b completed.")
+            print(f"   Before filtering: {len(events_detected)} events")
+            print(f"   After filtering: {len(filtered_events)} events")
+            print(f"   Filtered out: {filter_stats['rejected']} events")
+            print("")
+
+            # Use filtered events for next steps
+            events_detected = filtered_events
+
+        except Exception as filter_error:
+            print(f"⚠️  Error during filtering: {filter_error}")
+            print("   Continuing with unfiltered events")
+            import traceback
+            traceback.print_exc()
+
+        if not events_detected:
+            print("⚠️  No events passed quality filters. Exiting.")
+            print("   This means all detected events were filtered out as trivial/low-quality.")
+            print("   Check config/event_filters.json to adjust filter settings if needed.")
+
+            # Output statistics even if zero (for GitHub Actions)
+            print("")
+            print("::group::GitHub Actions Output")
+            print("EVENTS_DETECTED=0")
+            print("EVENTS_STORED=0")
+            print("CORRELATIONS_CREATED=0")
+            print("AVG_CORRELATION_SCORE=0.00")
+            print("::endgroup::")
+            return
+
         # STEP 3-4: Process Each Event
         print("STEP 3-4: PROCESSING EVENTS AND CORRELATIONS")
         print("-" * 80)

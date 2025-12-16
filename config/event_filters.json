@@ -1,0 +1,170 @@
+{
+  "description": "Event Collection Quality Filters - Controls what events get stored in database",
+  "version": "1.0",
+  "last_updated": "2024-12-16",
+
+  "filtering_mode": {
+    "enabled": true,
+    "mode": "strict",
+    "comment": "Options: 'strict' (high quality only), 'balanced' (good quality), 'lenient' (allow more)"
+  },
+
+  "impact_level_filters": {
+    "minimum_impact_level": "medium",
+    "comment": "Only store events with this impact level or higher",
+    "allowed_levels": ["medium", "high", "critical"],
+    "reasoning": "Focus on significant events that justify astrological analysis"
+  },
+
+  "category_filters": {
+    "enabled_categories": [
+      "Natural Disasters",
+      "Economic Events",
+      "Political Events",
+      "Health & Medical",
+      "Technology & Innovation",
+      "Wars & Conflicts",
+      "Business & Commerce",
+      "Employment & Labor"
+    ],
+    "disabled_categories": [
+      "Entertainment & Sports"
+    ],
+    "comment": "Disabled categories will be filtered out unless impact_level is 'critical'"
+  },
+
+  "impact_metrics_thresholds": {
+    "comment": "Events must meet AT LEAST ONE of these thresholds to be stored",
+    "critical_level": {
+      "deaths_min": 100,
+      "injured_min": 500,
+      "affected_min": 1000000,
+      "financial_impact_usd_min": 1000000000
+    },
+    "high_level": {
+      "deaths_min": 10,
+      "injured_min": 50,
+      "affected_min": 100000,
+      "financial_impact_usd_min": 100000000
+    },
+    "medium_level": {
+      "deaths_min": 1,
+      "injured_min": 10,
+      "affected_min": 10000,
+      "financial_impact_usd_min": 10000000
+    },
+    "low_level": {
+      "comment": "Low impact events are generally filtered out",
+      "allow_if_astrologically_significant": true
+    }
+  },
+
+  "geographic_filters": {
+    "enabled": true,
+    "priority_countries": ["India", "United States", "China", "Russia", "United Kingdom", "Japan", "Germany", "France"],
+    "priority_indian_states": ["Tamil Nadu", "Karnataka", "Maharashtra", "Delhi", "Gujarat", "Uttar Pradesh", "West Bengal", "Bihar"],
+    "minimum_geographic_scope": "state",
+    "comment": "Events must be at least state-level unless critical impact. Options: 'local', 'state', 'national', 'international'"
+  },
+
+  "keyword_filters": {
+    "blacklist": {
+      "enabled": true,
+      "keywords": [
+        "celebrity gossip",
+        "personal relationship",
+        "social media trend",
+        "viral video",
+        "influencer",
+        "box office collection",
+        "movie review",
+        "fashion show",
+        "beauty pageant",
+        "sports match result",
+        "minor traffic accident",
+        "local protest",
+        "routine inspection",
+        "planned maintenance"
+      ],
+      "comment": "Events containing these keywords will be filtered out unless critical impact"
+    },
+    "required_for_low_impact": {
+      "enabled": true,
+      "keywords": [
+        "government policy",
+        "policy change",
+        "regulatory",
+        "legislation",
+        "disaster",
+        "crisis",
+        "outbreak",
+        "breakthrough",
+        "emergency",
+        "major",
+        "significant",
+        "historic"
+      ],
+      "comment": "Low-impact events must contain at least one of these keywords"
+    }
+  },
+
+  "source_credibility": {
+    "enabled": true,
+    "require_sources": true,
+    "minimum_sources": 1,
+    "comment": "Events should have verifiable news sources"
+  },
+
+  "deduplication": {
+    "enabled": true,
+    "similarity_threshold": 0.85,
+    "check_within_hours": 48,
+    "comment": "Prevent storing duplicate events. Checks title similarity and date proximity"
+  },
+
+  "astrological_relevance": {
+    "require_house_mapping": false,
+    "require_planet_mapping": false,
+    "auto_map_if_missing": true,
+    "comment": "If false, events without astrological mapping will be filtered out"
+  },
+
+  "quality_scoring": {
+    "enabled": true,
+    "minimum_research_score": 40,
+    "comment": "Events must score at least this value (0-100) to be stored. Lower = more lenient"
+  },
+
+  "special_rules": {
+    "always_allow_critical": true,
+    "always_allow_natural_disasters": true,
+    "always_allow_wars_conflicts": true,
+    "always_allow_economic_crises": true,
+    "comment": "These categories bypass most filters due to astrological significance"
+  },
+
+  "collection_limits": {
+    "max_events_per_run": 15,
+    "target_events_per_run": 8,
+    "min_events_per_run": 3,
+    "comment": "If fewer than min_events found, system will log warning but not fail"
+  },
+
+  "validation_rules": {
+    "require_title": true,
+    "require_date": true,
+    "require_description": true,
+    "require_location": true,
+    "require_category": true,
+    "min_description_length": 100,
+    "max_description_length": 1000,
+    "min_title_length": 10,
+    "max_title_length": 150
+  },
+
+  "time_window_filters": {
+    "enabled": true,
+    "max_event_age_hours": 72,
+    "comment": "Events older than this will be filtered out (prevents collecting old news as new)"
+  }
+}
