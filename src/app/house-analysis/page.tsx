@@ -4,6 +4,9 @@ import { getPlanetaryData } from '@/lib/database';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
+// Force dynamic rendering to avoid build-time timeouts with database queries
+export const dynamic = 'force-dynamic';
+
 interface EventAnalysis {
   event: any;
   houseMapping: any;
